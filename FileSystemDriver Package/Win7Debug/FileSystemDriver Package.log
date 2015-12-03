@@ -1,0 +1,27 @@
+﻿Сборка начата 14.11.2015 21:54:08.
+     1>Проект "C:\Users\a1exdandy1\documents\visual studio 2013\Projects\FileSystemDriver\FileSystemDriver Package\FileSystemDriver Package.vcxproj" в узле 2 (целевые объекты Build).
+     1>Inf2Cat:
+         C:\Program Files (x86)\Windows Kits\8.1\bin\x86\inf2cat.exe /os:7_x86 /driver:"C:\Users\a1exdandy1\documents\visual studio 2013\Projects\FileSystemDriver\Win7Debug\FileSystemDriver Package\\" 
+         .........................
+         Signability test complete.
+         
+         Errors:
+         None
+         
+         Warnings:
+         None
+         
+         Catalog generation complete.
+         C:\Users\a1exdandy1\documents\visual studio 2013\Projects\FileSystemDriver\Win7Debug\FileSystemDriver Package\filesystemdriver.cat
+       DriverTestSign:
+         C:\Program Files (x86)\Windows Kits\8.1\bin\x86\signtool.exe sign /ph /sha1 "DAF2C0AA162F4A8A55A899D88AF8A70CC940E14E" 
+         Done Adding Additional Store
+         Successfully signed: C:\Users\a1exdandy1\documents\visual studio 2013\Projects\FileSystemDriver\Win7Debug\FileSystemDriver Package\filesystemdriver.cat
+         
+       Deploy:
+         Deploying driver files for project "C:\Users\a1exdandy1\documents\visual studio 2013\Projects\FileSystemDriver\FileSystemDriver Package\FileSystemDriver Package.vcxproj".  Deployment may take a few minutes...
+     1>Сборка проекта "C:\Users\a1exdandy1\documents\visual studio 2013\Projects\FileSystemDriver\FileSystemDriver Package\FileSystemDriver Package.vcxproj" завершена (целевые объекты Build) с ошибкой.
+
+Ошибка сборки.
+
+Затраченное время: 00:00:03.99
