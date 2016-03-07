@@ -32,10 +32,13 @@ PFLT_PORT clientPort;
 #define PTDBG_TRACE_ROUTINES            0x00000001
 #define PTDBG_TRACE_OPERATION_STATUS    0x00000002
 
-ULONG gTraceFlags = 0;
+ULONG gTraceFlags = 3; // show all dbg message
 
 
-#define PT_DBG_PRINT( _dbgLevel, _string ) DbgPrint _string
+#define PT_DBG_PRINT( _dbgLevel, _string )          \
+    (FlagOn(gTraceFlags,(_dbgLevel)) ?              \
+        DbgPrint _string :                          \
+        ((int)0))
 
 /*************************************************************************
     Prototypes
@@ -582,11 +585,11 @@ Return Value:
                                 &FilterRegistration,
                                 &gFilterHandle );
 
-	
-
 	RtlInitUnicodeString(&uniString, L"\\FileSystemDriver");
 
-	status = FltBuildDefaultSecurityDescriptor(&sd, FLT_PORT_ALL_ACCESS);
+	if (NT_SUCCESS(status)) {
+		status = FltBuildDefaultSecurityDescriptor(&sd, FLT_PORT_ALL_ACCESS);
+	}
 
 	if (NT_SUCCESS(status)) {
 
