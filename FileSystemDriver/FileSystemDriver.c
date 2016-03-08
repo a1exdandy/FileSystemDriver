@@ -31,9 +31,18 @@ PFLT_PORT clientPort;
 
 #define PTDBG_TRACE_ROUTINES            0x00000001
 #define PTDBG_TRACE_OPERATION_STATUS    0x00000002
+#define PTDBG_INFORMATION    0x00000004
+#define PTDBG_WARNING    0x00000008
+#define PTDBG_ERROR    0x00000010
+
 
 // show all dbg message
-ULONG gTraceFlags = PTDBG_TRACE_OPERATION_STATUS | PTDBG_TRACE_ROUTINES;
+ULONG gTraceFlags = 
+	PTDBG_TRACE_OPERATION_STATUS | 
+	PTDBG_TRACE_ROUTINES |
+	PTDBG_INFORMATION |
+	PTDBG_WARNING |
+	PTDBG_ERROR;
 
 
 #define PT_DBG_PRINT( _dbgLevel, _string )          \
@@ -734,7 +743,6 @@ Return Value:
 
 --*/
 {
-	//PANSI_STRING ansi_str = NULL;
 	NTSTATUS status;
 
 
@@ -767,10 +775,8 @@ Return Value:
 				status));
 		}
 	}
-	if (FltObjects->FileObject != NULL) {
-		//RtlUnicodeStringToAnsiString(ansi_str, &FltObjects->FileObject->FileName, TRUE);
-		DbgPrint("File name: %wZ", &FltObjects->FileObject->FileName);
-		//RtlFreeAnsiString(ansi_str);
+	if (NULL != FltObjects->FileObject) {
+		DbgPrint("FileSystemDriver!FileSystemDriverPreOperation: File name is %wZ\n", &FltObjects->FileObject->FileName);
 	}
 
 	
