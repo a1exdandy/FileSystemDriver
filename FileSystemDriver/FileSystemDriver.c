@@ -22,7 +22,6 @@ Environment:
 
 
 PFLT_FILTER gFilterHandle;
-ULONG_PTR OperationStatusCtx = 1;
 
 // Global data
 PFLT_PORT serverPort;
@@ -31,9 +30,9 @@ PFLT_PORT clientPort;
 
 #define PTDBG_TRACE_ROUTINES            0x00000001
 #define PTDBG_TRACE_OPERATION_STATUS    0x00000002
-#define PTDBG_INFORMATION    0x00000004
-#define PTDBG_WARNING    0x00000008
-#define PTDBG_ERROR    0x00000010
+#define PTDBG_INFORMATION               0x00000004
+#define PTDBG_WARNING                   0x00000008
+#define PTDBG_ERROR                     0x00000010
 
 
 // show all dbg message
@@ -73,7 +72,7 @@ NTSTATUS
 DriverEntry (
     _In_ PDRIVER_OBJECT DriverObject,
     _In_ PUNICODE_STRING RegistryPath
-    );
+);
 
 NTSTATUS
 FileSystemDriverInstanceSetup (
@@ -81,65 +80,64 @@ FileSystemDriverInstanceSetup (
     _In_ FLT_INSTANCE_SETUP_FLAGS Flags,
     _In_ DEVICE_TYPE VolumeDeviceType,
     _In_ FLT_FILESYSTEM_TYPE VolumeFilesystemType
-    );
+);
 
-VOID
-FileSystemDriverInstanceTeardownStart (
-    _In_ PCFLT_RELATED_OBJECTS FltObjects,
-    _In_ FLT_INSTANCE_TEARDOWN_FLAGS Flags
-    );
-
-VOID
-FileSystemDriverInstanceTeardownComplete (
-    _In_ PCFLT_RELATED_OBJECTS FltObjects,
-    _In_ FLT_INSTANCE_TEARDOWN_FLAGS Flags
-    );
 
 NTSTATUS
 FileSystemDriverUnload (
     _In_ FLT_FILTER_UNLOAD_FLAGS Flags
-    );
+);
 
 NTSTATUS
 FileSystemDriverInstanceQueryTeardown (
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _In_ FLT_INSTANCE_QUERY_TEARDOWN_FLAGS Flags
-    );
+);
 
 FLT_PREOP_CALLBACK_STATUS
-FileSystemDriverPreOperation (
+FileSystemDriverReadPreOperation (
     _Inout_ PFLT_CALLBACK_DATA Data,
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
-    );
-
-VOID
-FileSystemDriverOperationStatusCallback (
-    _In_ PCFLT_RELATED_OBJECTS FltObjects,
-    _In_ PFLT_IO_PARAMETER_BLOCK ParameterSnapshot,
-    _In_ NTSTATUS OperationStatus,
-    _In_ PVOID RequesterContext
-    );
+);
 
 FLT_POSTOP_CALLBACK_STATUS
-FileSystemDriverPostOperation (
+FileSystemDriverReadPostOperation (
     _Inout_ PFLT_CALLBACK_DATA Data,
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _In_opt_ PVOID CompletionContext,
     _In_ FLT_POST_OPERATION_FLAGS Flags
-    );
+);
 
 FLT_PREOP_CALLBACK_STATUS
-FileSystemDriverPreOperationNoPostOperation (
-    _Inout_ PFLT_CALLBACK_DATA Data,
-    _In_ PCFLT_RELATED_OBJECTS FltObjects,
-    _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
-    );
+FileSystemDriverWritePreOperation(
+	_Inout_ PFLT_CALLBACK_DATA Data,
+	_In_ PCFLT_RELATED_OBJECTS FltObjects,
+	_Flt_CompletionContext_Outptr_ PVOID *CompletionContext
+);
 
-BOOLEAN
-FileSystemDriverDoRequestOperationStatus(
-    _In_ PFLT_CALLBACK_DATA Data
-    );
+FLT_POSTOP_CALLBACK_STATUS
+FileSystemDriverWritePostOperation(
+	_Inout_ PFLT_CALLBACK_DATA Data,
+	_In_ PCFLT_RELATED_OBJECTS FltObjects,
+	_In_opt_ PVOID CompletionContext,
+	_In_ FLT_POST_OPERATION_FLAGS Flags
+);
+
+FLT_PREOP_CALLBACK_STATUS
+FileSystemDriverCreatePreOperation(
+	_Inout_ PFLT_CALLBACK_DATA Data,
+	_In_ PCFLT_RELATED_OBJECTS FltObjects,
+	_Flt_CompletionContext_Outptr_ PVOID *CompletionContext
+);
+
+FLT_POSTOP_CALLBACK_STATUS
+FileSystemDriverCreatePostOperation(
+	_Inout_ PFLT_CALLBACK_DATA Data,
+	_In_ PCFLT_RELATED_OBJECTS FltObjects,
+	_In_opt_ PVOID CompletionContext,
+	_In_ FLT_POST_OPERATION_FLAGS Flags
+);
 
 //
 //  Assign text sections for each routine.
@@ -150,8 +148,6 @@ FileSystemDriverDoRequestOperationStatus(
 #pragma alloc_text(PAGE, FileSystemDriverUnload)
 #pragma alloc_text(PAGE, FileSystemDriverInstanceQueryTeardown)
 #pragma alloc_text(PAGE, FileSystemDriverInstanceSetup)
-#pragma alloc_text(PAGE, FileSystemDriverInstanceTeardownStart)
-#pragma alloc_text(PAGE, FileSystemDriverInstanceTeardownComplete)
 #endif
 
 
@@ -161,204 +157,24 @@ FileSystemDriverDoRequestOperationStatus(
 
 CONST FLT_OPERATION_REGISTRATION Callbacks[] = {
 
-#if 1 // TODO - List all of the requests to filter.
+	/* temporary disable create callback
     { IRP_MJ_CREATE,
       0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-	/*{ IRP_MJ_CREATE_NAMED_PIPE,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_CLOSE,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },*/
+      FileSystemDriverCreatePreOperation,
+      FileSystemDriverCreatePostOperation },
+	  */
 
     { IRP_MJ_READ,
       0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
+      FileSystemDriverReadPreOperation,
+      FileSystemDriverReadPostOperation },
 	 
+	/* temporary disable write callback
 	{ IRP_MJ_WRITE,
       0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-   /*{ IRP_MJ_QUERY_INFORMATION,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_SET_INFORMATION,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_QUERY_EA,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_SET_EA,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_FLUSH_BUFFERS,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_QUERY_VOLUME_INFORMATION,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_SET_VOLUME_INFORMATION,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_DIRECTORY_CONTROL,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_FILE_SYSTEM_CONTROL,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_DEVICE_CONTROL,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_INTERNAL_DEVICE_CONTROL,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_SHUTDOWN,
-      0,
-      FileSystemDriverPreOperationNoPostOperation,
-      NULL },                               //post operations not supported
-
-    { IRP_MJ_LOCK_CONTROL,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_CLEANUP,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_CREATE_MAILSLOT,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_QUERY_SECURITY,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_SET_SECURITY,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_QUERY_QUOTA,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_SET_QUOTA,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_PNP,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_ACQUIRE_FOR_SECTION_SYNCHRONIZATION,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_RELEASE_FOR_SECTION_SYNCHRONIZATION,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_ACQUIRE_FOR_MOD_WRITE,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_RELEASE_FOR_MOD_WRITE,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_ACQUIRE_FOR_CC_FLUSH,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_RELEASE_FOR_CC_FLUSH,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_FAST_IO_CHECK_IF_POSSIBLE,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_NETWORK_QUERY_OPEN,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_MDL_READ,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_MDL_READ_COMPLETE,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_PREPARE_MDL_WRITE,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_MDL_WRITE_COMPLETE,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_VOLUME_MOUNT,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },
-
-    { IRP_MJ_VOLUME_DISMOUNT,
-      0,
-      FileSystemDriverPreOperation,
-      FileSystemDriverPostOperation },*/
-
-#endif // TODO
-
+      FileSystemDriverWritePreOperation,
+      FileSystemDriverWritePostOperation },
+	 */
     { IRP_MJ_OPERATION_END }
 };
 
@@ -378,16 +194,15 @@ CONST FLT_REGISTRATION FilterRegistration = {
     FileSystemDriverUnload,                           //  MiniFilterUnload
 
     FileSystemDriverInstanceSetup,                    //  InstanceSetup
-    FileSystemDriverInstanceQueryTeardown,            //  InstanceQueryTeardown
-    FileSystemDriverInstanceTeardownStart,            //  InstanceTeardownStart
-    FileSystemDriverInstanceTeardownComplete,         //  InstanceTeardownComplete
+	FileSystemDriverInstanceQueryTeardown,            //  InstanceQueryTeardown
 
+    NULL,                               //  InstanceTeardownStart
+    NULL,                               //  InstanceTeardownComplete
     NULL,                               //  GenerateFileName
     NULL,                               //  GenerateDestinationFileName
     NULL                                //  NormalizeNameComponent
 
 };
-
 
 
 NTSTATUS
@@ -437,113 +252,44 @@ Return Value:
 
 NTSTATUS
 FileSystemDriverInstanceQueryTeardown (
-    _In_ PCFLT_RELATED_OBJECTS FltObjects,
-    _In_ FLT_INSTANCE_QUERY_TEARDOWN_FLAGS Flags
-    )
+	_In_ PCFLT_RELATED_OBJECTS FltObjects,
+	_In_ FLT_INSTANCE_QUERY_TEARDOWN_FLAGS Flags
+)
 /*++
 
 Routine Description:
 
-    This is called when an instance is being manually deleted by a
-    call to FltDetachVolume or FilterDetach thereby giving us a
-    chance to fail that detach request.
+This is called when an instance is being manually deleted by a
+call to FltDetachVolume or FilterDetach thereby giving us a
+chance to fail that detach request.
 
-    If this routine is not defined in the registration structure, explicit
-    detach requests via FltDetachVolume or FilterDetach will always be
-    failed.
-
-Arguments:
-
-    FltObjects - Pointer to the FLT_RELATED_OBJECTS data structure containing
-        opaque handles to this filter, instance and its associated volume.
-
-    Flags - Indicating where this detach request came from.
-
-Return Value:
-
-    Returns the status of this operation.
-
---*/
-{
-    UNREFERENCED_PARAMETER( FltObjects );
-    UNREFERENCED_PARAMETER( Flags );
-
-    PAGED_CODE();
-
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("FileSystemDriver!FileSystemDriverInstanceQueryTeardown: Entered\n") );
-
-    return STATUS_SUCCESS;
-}
-
-
-VOID
-FileSystemDriverInstanceTeardownStart (
-    _In_ PCFLT_RELATED_OBJECTS FltObjects,
-    _In_ FLT_INSTANCE_TEARDOWN_FLAGS Flags
-    )
-/*++
-
-Routine Description:
-
-    This routine is called at the start of instance teardown.
+If this routine is not defined in the registration structure, explicit
+detach requests via FltDetachVolume or FilterDetach will always be
+failed.
 
 Arguments:
 
-    FltObjects - Pointer to the FLT_RELATED_OBJECTS data structure containing
-        opaque handles to this filter, instance and its associated volume.
+FltObjects - Pointer to the FLT_RELATED_OBJECTS data structure containing
+opaque handles to this filter, instance and its associated volume.
 
-    Flags - Reason why this instance is being deleted.
-
-Return Value:
-
-    None.
-
---*/
-{
-    UNREFERENCED_PARAMETER( FltObjects );
-    UNREFERENCED_PARAMETER( Flags );
-
-    PAGED_CODE();
-
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("FileSystemDriver!FileSystemDriverInstanceTeardownStart: Entered\n") );
-}
-
-
-VOID
-FileSystemDriverInstanceTeardownComplete (
-    _In_ PCFLT_RELATED_OBJECTS FltObjects,
-    _In_ FLT_INSTANCE_TEARDOWN_FLAGS Flags
-    )
-/*++
-
-Routine Description:
-
-    This routine is called at the end of instance teardown.
-
-Arguments:
-
-    FltObjects - Pointer to the FLT_RELATED_OBJECTS data structure containing
-        opaque handles to this filter, instance and its associated volume.
-
-    Flags - Reason why this instance is being deleted.
+Flags - Indicating where this detach request came from.
 
 Return Value:
 
-    None.
+Returns the status of this operation.
 
 --*/
 {
-    UNREFERENCED_PARAMETER( FltObjects );
-    UNREFERENCED_PARAMETER( Flags );
+	UNREFERENCED_PARAMETER( FltObjects );
+	UNREFERENCED_PARAMETER( Flags );
 
-    PAGED_CODE();
+	PAGED_CODE();
 
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("FileSystemDriver!FileSystemDriverInstanceTeardownComplete: Entered\n") );
+	PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
+		("FileSystemDriver!FileSystemDriverInstanceQueryTeardown: Entered\n") );
+
+	return STATUS_SUCCESS;
 }
-
 
 /*************************************************************************
     MiniFilter initialization and unload routines.
@@ -712,12 +458,13 @@ Return Value:
 /*************************************************************************
     MiniFilter callback routines.
 *************************************************************************/
+
 FLT_PREOP_CALLBACK_STATUS
-FileSystemDriverPreOperation (
+FileSystemDriverReadPreOperation (
     _Inout_ PFLT_CALLBACK_DATA Data,
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
-    )
+)
 /*++
 
 Routine Description:
@@ -743,43 +490,19 @@ Return Value:
 
 --*/
 {
-	NTSTATUS status;
-
 
 	UNREFERENCED_PARAMETER( Data );
     UNREFERENCED_PARAMETER( FltObjects );
     UNREFERENCED_PARAMETER( CompletionContext );
 
     PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("FileSystemDriver!FileSystemDriverPreOperation: Entered\n") );
+                  ("FileSystemDriver!FileSystemDriverReadPreOperation: Entered\n") );
 
-    //
-    //  See if this is an operation we would like the operation status
-    //  for.  If so request it.
-    //
-    //  NOTE: most filters do NOT need to do this.  You only need to make
-    //        this call if, for example, you need to know if the oplock was
-    //        actually granted.
-    //
-
-	
-	if (FileSystemDriverDoRequestOperationStatus(Data)) {
-
-		status = FltRequestOperationStatusCallback(Data,
-			FileSystemDriverOperationStatusCallback,
-			(PVOID)(++OperationStatusCtx));
-		if (!NT_SUCCESS(status)) {
-
-			PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS,
-				("FileSystemDriver!FileSystemDriverPreOperation: FltRequestOperationStatusCallback Failed, status=%08x\n",
-				status));
-		}
-	}
 	if (NULL != FltObjects->FileObject) {
-		DbgPrint("FileSystemDriver!FileSystemDriverPreOperation: File name is %wZ\n", &FltObjects->FileObject->FileName);
+		PT_DBG_PRINT( PTDBG_INFORMATION,
+			("Read file: %wZ\n", &FltObjects->FileObject->FileName));
 	}
 
-	
     // This template code does not do anything with the callbackData, but
     // rather returns FLT_PREOP_SUCCESS_WITH_CALLBACK.
     // This passes the request down to the next miniFilter in the chain.
@@ -788,69 +511,13 @@ Return Value:
 }
 
 
-
-VOID
-FileSystemDriverOperationStatusCallback (
-    _In_ PCFLT_RELATED_OBJECTS FltObjects,
-    _In_ PFLT_IO_PARAMETER_BLOCK ParameterSnapshot,
-    _In_ NTSTATUS OperationStatus,
-    _In_ PVOID RequesterContext
-    )
-/*++
-
-Routine Description:
-
-    This routine is called when the given operation returns from the call
-    to IoCallDriver.  This is useful for operations where STATUS_PENDING
-    means the operation was successfully queued.  This is useful for OpLocks
-    and directory change notification operations.
-
-    This callback is called in the context of the originating thread and will
-    never be called at DPC level.  The file object has been correctly
-    referenced so that you can access it.  It will be automatically
-    dereferenced upon return.
-
-    This is non-pageable because it could be called on the paging path
-
-Arguments:
-
-    FltObjects - Pointer to the FLT_RELATED_OBJECTS data structure containing
-        opaque handles to this filter, instance, its associated volume and
-        file object.
-
-    RequesterContext - The context for the completion routine for this
-        operation.
-
-    OperationStatus -
-
-Return Value:
-
-    The return value is the status of the operation.
-
---*/
-{
-    UNREFERENCED_PARAMETER( FltObjects );
-
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("FileSystemDriver!FileSystemDriverOperationStatusCallback: Entered\n") );
-
-    PT_DBG_PRINT( PTDBG_TRACE_OPERATION_STATUS,
-                  ("FileSystemDriver!FileSystemDriverOperationStatusCallback: Status=%08x ctx=%p IrpMj=%02x.%02x \"%s\"\n",
-                   OperationStatus,
-                   RequesterContext,
-                   ParameterSnapshot->MajorFunction,
-                   ParameterSnapshot->MinorFunction,
-                   FltGetIrpName(ParameterSnapshot->MajorFunction)) );
-}
-
-
 FLT_POSTOP_CALLBACK_STATUS
-FileSystemDriverPostOperation (
+FileSystemDriverReadPostOperation (
     _Inout_ PFLT_CALLBACK_DATA Data,
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _In_opt_ PVOID CompletionContext,
     _In_ FLT_POST_OPERATION_FLAGS Flags
-    )
+)
 /*++
 
 Routine Description:
@@ -884,107 +551,189 @@ Return Value:
     UNREFERENCED_PARAMETER( Flags );
 
     PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("FileSystemDriver!FileSystemDriverPostOperation: Entered\n") );
+                  ("FileSystemDriver!FileSystemDriverReadPostOperation: Entered\n") );
 
     return FLT_POSTOP_FINISHED_PROCESSING;
 }
 
 
 FLT_PREOP_CALLBACK_STATUS
-FileSystemDriverPreOperationNoPostOperation (
-    _Inout_ PFLT_CALLBACK_DATA Data,
-    _In_ PCFLT_RELATED_OBJECTS FltObjects,
-    _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
-    )
+FileSystemDriverWritePreOperation(
+	_Inout_ PFLT_CALLBACK_DATA Data,
+	_In_ PCFLT_RELATED_OBJECTS FltObjects,
+	_Flt_CompletionContext_Outptr_ PVOID *CompletionContext
+)
 /*++
 
 Routine Description:
 
-    This routine is a pre-operation dispatch routine for this miniFilter.
+This routine is a pre-operation dispatch routine for this miniFilter.
 
-    This is non-pageable because it could be called on the paging path
+This is non-pageable because it could be called on the paging path
 
 Arguments:
 
-    Data - Pointer to the filter callbackData that is passed to us.
+Data - Pointer to the filter callbackData that is passed to us.
 
-    FltObjects - Pointer to the FLT_RELATED_OBJECTS data structure containing
-        opaque handles to this filter, instance, its associated volume and
-        file object.
+FltObjects - Pointer to the FLT_RELATED_OBJECTS data structure containing
+opaque handles to this filter, instance, its associated volume and
+file object.
 
-    CompletionContext - The context for the completion routine for this
-        operation.
+CompletionContext - The context for the completion routine for this
+operation.
 
 Return Value:
 
-    The return value is the status of the operation.
+The return value is the status of the operation.
 
 --*/
 {
-    UNREFERENCED_PARAMETER( Data );
-    UNREFERENCED_PARAMETER( FltObjects );
-    UNREFERENCED_PARAMETER( CompletionContext );
 
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("FileSystemDriver!FileSystemDriverPreOperationNoPostOperation: Entered\n") );
+	UNREFERENCED_PARAMETER(Data);
+	UNREFERENCED_PARAMETER(FltObjects);
+	UNREFERENCED_PARAMETER(CompletionContext);
 
-    // This template code does not do anything with the callbackData, but
-    // rather returns FLT_PREOP_SUCCESS_NO_CALLBACK.
-    // This passes the request down to the next miniFilter in the chain.
+	PT_DBG_PRINT(PTDBG_TRACE_ROUTINES,
+		("FileSystemDriver!FileSystemDriverWritePreOperation: Entered\n"));
 
-    return FLT_PREOP_SUCCESS_NO_CALLBACK;
+	return FLT_PREOP_SUCCESS_WITH_CALLBACK;
 }
 
 
-BOOLEAN
-FileSystemDriverDoRequestOperationStatus(
-    _In_ PFLT_CALLBACK_DATA Data
-    )
+FLT_POSTOP_CALLBACK_STATUS
+FileSystemDriverWritePostOperation(
+	_Inout_ PFLT_CALLBACK_DATA Data,
+	_In_ PCFLT_RELATED_OBJECTS FltObjects,
+	_In_opt_ PVOID CompletionContext,
+	_In_ FLT_POST_OPERATION_FLAGS Flags
+)
 /*++
 
 Routine Description:
 
-    This identifies those operations we want the operation status for.  These
-    are typically operations that return STATUS_PENDING as a normal completion
-    status.
+This routine is the post-operation completion routine for this
+miniFilter.
+
+This is non-pageable because it may be called at DPC level.
 
 Arguments:
 
+Data - Pointer to the filter callbackData that is passed to us.
+
+FltObjects - Pointer to the FLT_RELATED_OBJECTS data structure containing
+opaque handles to this filter, instance, its associated volume and
+file object.
+
+CompletionContext - The completion context set in the pre-operation routine.
+
+Flags - Denotes whether the completion is successful or is being drained.
+
 Return Value:
 
-    TRUE - If we want the operation status
-    FALSE - If we don't
+The return value is the status of the operation.
 
 --*/
 {
-    PFLT_IO_PARAMETER_BLOCK iopb = Data->Iopb;
+	UNREFERENCED_PARAMETER(Data);
+	UNREFERENCED_PARAMETER(FltObjects);
+	UNREFERENCED_PARAMETER(CompletionContext);
+	UNREFERENCED_PARAMETER(Flags);
 
-    //
-    //  return boolean state based on which operations we are interested in
-    //
+	PT_DBG_PRINT(PTDBG_TRACE_ROUTINES,
+		("FileSystemDriver!FileSystemDriverWritePostOperation: Entered\n"));
 
-    return (BOOLEAN)
-
-            //
-            //  Check for oplock operations
-            //
-
-             (((iopb->MajorFunction == IRP_MJ_FILE_SYSTEM_CONTROL) &&
-               ((iopb->Parameters.FileSystemControl.Common.FsControlCode == FSCTL_REQUEST_FILTER_OPLOCK)  ||
-                (iopb->Parameters.FileSystemControl.Common.FsControlCode == FSCTL_REQUEST_BATCH_OPLOCK)   ||
-                (iopb->Parameters.FileSystemControl.Common.FsControlCode == FSCTL_REQUEST_OPLOCK_LEVEL_1) ||
-                (iopb->Parameters.FileSystemControl.Common.FsControlCode == FSCTL_REQUEST_OPLOCK_LEVEL_2)))
-
-              ||
-
-              //
-              //    Check for directy change notification
-              //
-
-              ((iopb->MajorFunction == IRP_MJ_DIRECTORY_CONTROL) &&
-               (iopb->MinorFunction == IRP_MN_NOTIFY_CHANGE_DIRECTORY))
-             );
+	return FLT_POSTOP_FINISHED_PROCESSING;
 }
+
+
+FLT_PREOP_CALLBACK_STATUS
+FileSystemDriverCreatePreOperation(
+	_Inout_ PFLT_CALLBACK_DATA Data,
+	_In_ PCFLT_RELATED_OBJECTS FltObjects,
+	_Flt_CompletionContext_Outptr_ PVOID *CompletionContext
+)
+/*++
+
+Routine Description:
+
+This routine is a pre-operation dispatch routine for this miniFilter.
+
+This is non-pageable because it could be called on the paging path
+
+Arguments:
+
+Data - Pointer to the filter callbackData that is passed to us.
+
+FltObjects - Pointer to the FLT_RELATED_OBJECTS data structure containing
+opaque handles to this filter, instance, its associated volume and
+file object.
+
+CompletionContext - The context for the completion routine for this
+operation.
+
+Return Value:
+
+The return value is the status of the operation.
+
+--*/
+{
+
+	UNREFERENCED_PARAMETER(Data);
+	UNREFERENCED_PARAMETER(FltObjects);
+	UNREFERENCED_PARAMETER(CompletionContext);
+
+	PT_DBG_PRINT(PTDBG_TRACE_ROUTINES,
+		("FileSystemDriver!FileSystemDriverCreatePreOperation: Entered\n"));
+
+	return FLT_PREOP_SUCCESS_WITH_CALLBACK;
+}
+
+
+FLT_POSTOP_CALLBACK_STATUS
+FileSystemDriverCreatePostOperation(
+	_Inout_ PFLT_CALLBACK_DATA Data,
+	_In_ PCFLT_RELATED_OBJECTS FltObjects,
+	_In_opt_ PVOID CompletionContext,
+	_In_ FLT_POST_OPERATION_FLAGS Flags
+)
+/*++
+
+Routine Description:
+
+This routine is the post-operation completion routine for this
+miniFilter.
+
+This is non-pageable because it may be called at DPC level.
+
+Arguments:
+
+Data - Pointer to the filter callbackData that is passed to us.
+
+FltObjects - Pointer to the FLT_RELATED_OBJECTS data structure containing
+opaque handles to this filter, instance, its associated volume and
+file object.
+
+CompletionContext - The completion context set in the pre-operation routine.
+
+Flags - Denotes whether the completion is successful or is being drained.
+
+Return Value:
+
+The return value is the status of the operation.
+
+--*/
+{
+	UNREFERENCED_PARAMETER(Data);
+	UNREFERENCED_PARAMETER(FltObjects);
+	UNREFERENCED_PARAMETER(CompletionContext);
+	UNREFERENCED_PARAMETER(Flags);
+
+	PT_DBG_PRINT(PTDBG_TRACE_ROUTINES,
+		("FileSystemDriver!FileSystemDriverCreatePostOperation: Entered\n"));
+
+	return FLT_POSTOP_FINISHED_PROCESSING;
+}
+
 
 
 NTSTATUS
