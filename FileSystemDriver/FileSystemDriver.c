@@ -32,7 +32,8 @@ PFLT_PORT clientPort;
 #define PTDBG_TRACE_ROUTINES            0x00000001
 #define PTDBG_TRACE_OPERATION_STATUS    0x00000002
 
-ULONG gTraceFlags = 3; // show all dbg message
+// show all dbg message
+ULONG gTraceFlags = PTDBG_TRACE_OPERATION_STATUS | PTDBG_TRACE_ROUTINES;
 
 
 #define PT_DBG_PRINT( _dbgLevel, _string )          \
@@ -565,7 +566,7 @@ Return Value:
 
 --*/
 {
-    NTSTATUS status = 0;
+    NTSTATUS status = STATUS_SUCCESS;
 	OBJECT_ATTRIBUTES oa;
 	UNICODE_STRING uniString;
 	PSECURITY_DESCRIPTOR sd;
@@ -691,7 +692,8 @@ Return Value:
 
     PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
                   ("FileSystemDriver!FileSystemDriverUnload: Entered\n") );
-	FltCloseCommunicationPort(serverPort);
+
+	FltCloseCommunicationPort( serverPort );
     FltUnregisterFilter( gFilterHandle );
 
     return STATUS_SUCCESS;
