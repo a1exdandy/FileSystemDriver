@@ -565,7 +565,7 @@ Return Value:
 
 --*/
 {
-    NTSTATUS status;
+    NTSTATUS status = 0;
 	OBJECT_ATTRIBUTES oa;
 	UNICODE_STRING uniString;
 	PSECURITY_DESCRIPTOR sd;
@@ -581,17 +581,28 @@ Return Value:
     //  Register with FltMgr to tell it our callback routines
     //
 
-    status = FltRegisterFilter( DriverObject,
-                                &FilterRegistration,
-                                &gFilterHandle );
+	try {
 
-	RtlInitUnicodeString(&uniString, L"\\FileSystemDriver");
+		status = FltRegisterFilter(DriverObject,
+			&FilterRegistration,
+			&gFilterHandle);
 
-	if (NT_SUCCESS(status)) {
+		if (!NT_SUCCESS(status)) {
+			PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS,
+				("FileSystemDriver!DriverEntry: FltREgisterFilter Failed, status=%08x\n",
+				status));
+			leave;
+		}
+
+		RtlInitUnicodeString(&uniString, L"\\FileSystemDriver");
+
 		status = FltBuildDefaultSecurityDescriptor(&sd, FLT_PORT_ALL_ACCESS);
-	}
-
-	if (NT_SUCCESS(status)) {
+		if (!NT_SUCCESS(status)) {
+			PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS,
+				("FileSystemDriver!DriverEntry: FltBuildDefaultSecurityDescriptor Failed, status=%08x\n",
+				status));
+			leave;
+		}
 
 		InitializeObjectAttributes(&oa,
 			&uniString,
@@ -607,29 +618,46 @@ Return Value:
 			ClientHandlerPortDisconnect,
 			NULL,
 			1);
-		
 
 		//
 		//  Free the security descriptor in all cases.	It is not needed once
 		//  the call to FltCreateCommunicationPort() is made.
 		//
 		FltFreeSecurityDescriptor(sd);
+		
+		if (!NT_SUCCESS(status)) {
+			PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS,
+				("FileSystemDriver!DriverEntry: ltCreateCommunicationPort Failed, status=%08x\n",
+				status));
+			leave;
+		}
+
+		//
+		//  Start filtering i/o
+		//
+		status = FltStartFiltering(gFilterHandle);
+
+		if (!NT_SUCCESS(status)) {
+			PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS,
+				("FileSystemDriver!DriverEntry: FltStartFiltering Failed, status=%08x\n",
+				status));
+			leave;
+		}
+
+	} finally {
+
+		if (!NT_SUCCESS(status)) {
+			
+			if (NULL != serverPort) {
+				FltCloseCommunicationPort(serverPort);
+			}
+
+			if (NULL != gFilterHandle) {
+				FltUnregisterFilter(gFilterHandle);
+			}
+
+		}
 	}
-	
-	
-    FLT_ASSERT( NT_SUCCESS( status ) );
-
-    if (NT_SUCCESS( status )) {
-
-        //
-        //  Start filtering i/o
-        //
-        status = FltStartFiltering( gFilterHandle );
-        if (!NT_SUCCESS( status )) {
-			FltCloseCommunicationPort(serverPort);
-            FltUnregisterFilter( gFilterHandle );
-        }
-    }
 
     return status;
 }
