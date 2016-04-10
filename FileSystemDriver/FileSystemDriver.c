@@ -28,6 +28,8 @@ PFLT_PORT serverPort;
 PEPROCESS userProcess;
 PFLT_PORT clientPort;
 
+#define MAX_BUFFER_SIZE 2048
+
 #define PTDBG_TRACE_ROUTINES            0x00000001
 #define PTDBG_TRACE_OPERATION_STATUS    0x00000002
 #define PTDBG_INFORMATION               0x00000004
@@ -35,10 +37,9 @@ PFLT_PORT clientPort;
 #define PTDBG_ERROR                     0x00000010
 
 
-// show all dbg message
+// show all dbg message except PTDBG_TRACE_ROUTINES
 ULONG gTraceFlags = 
-	PTDBG_TRACE_OPERATION_STATUS | 
-	PTDBG_TRACE_ROUTINES |
+	PTDBG_TRACE_OPERATION_STATUS |
 	PTDBG_INFORMATION |
 	PTDBG_WARNING |
 	PTDBG_ERROR;
@@ -65,6 +66,16 @@ ClientHandlerPortConnect(
 	_In_reads_bytes_opt_(SizeOfContext) PVOID ConnectionContext,
 	_In_ ULONG SizeOfContext,
 	_Outptr_result_maybenull_ PVOID *ConnectionCookie
+);
+
+NTSTATUS
+ClientHandlerPortMessage (
+	_In_ PVOID PortCookie,
+	_In_ PVOID InputBuffer OPTIONAL,
+	_In_ ULONG InputBufferLength,
+	_Out_ PVOID OutputBuffer OPTIONAL,
+	_Out_ ULONG OutputBufferLength,
+	_Out_ PULONG ReturnOutputBufferLength
 );
 
 DRIVER_INITIALIZE DriverEntry;
@@ -139,6 +150,8 @@ FileSystemDriverCreatePostOperation(
 	_In_ FLT_POST_OPERATION_FLAGS Flags
 );
 
+BOOLEAN CheckExtension(_In_ PFILE_OBJECT fileObject);
+
 //
 //  Assign text sections for each routine.
 //
@@ -169,12 +182,11 @@ CONST FLT_OPERATION_REGISTRATION Callbacks[] = {
       FileSystemDriverReadPreOperation,
       FileSystemDriverReadPostOperation },
 	 
-	/* temporary disable write callback
 	{ IRP_MJ_WRITE,
       0,
       FileSystemDriverWritePreOperation,
       FileSystemDriverWritePostOperation },
-	 */
+	
     { IRP_MJ_OPERATION_END }
 };
 
@@ -236,6 +248,8 @@ Return Value:
 
 --*/
 {
+	/*NTSTATUS status;*/
+
     UNREFERENCED_PARAMETER( FltObjects );
     UNREFERENCED_PARAMETER( Flags );
     UNREFERENCED_PARAMETER( VolumeDeviceType );
@@ -245,6 +259,24 @@ Return Value:
 
     PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
                   ("FileSystemDriver!FileSystemDriverInstanceSetup: Entered\n") );
+	/*
+	if (NULL != FltObjects->Volume) {
+		WCHAR buffer[MAX_BUFFER_SIZE];
+		UNICODE_STRING volumeName;
+		RtlInitEmptyUnicodeString(&volumeName, buffer, MAX_BUFFER_SIZE);
+		status = FltGetVolumeName(FltObjects->Volume, NULL, NULL);
+		if (NT_SUCCESS(status)) {
+			PT_DBG_PRINT(PTDBG_INFORMATION,
+				("Volume name: %wZ\n", volumeName));
+		} else {
+			PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS,
+				("FileSystemDriver!DriverEntry: FltGetVolumeName Failed, status=%08x\n", status));
+		}
+	} else {
+		PT_DBG_PRINT(PTDBG_WARNING,
+			("FltObjects->Volume is NULL\n"));
+	}
+	*/
 
     return STATUS_SUCCESS;
 }
@@ -372,7 +404,7 @@ Return Value:
 			NULL,
 			ClientHandlerPortConnect,
 			ClientHandlerPortDisconnect,
-			NULL,
+			ClientHandlerPortMessage,
 			1);
 
 		//
@@ -490,6 +522,8 @@ Return Value:
 
 --*/
 {
+	PFLT_IO_PARAMETER_BLOCK Iopb = Data->Iopb;
+	PFILE_OBJECT fileObj = Iopb->TargetFileObject;
 
 	UNREFERENCED_PARAMETER( Data );
     UNREFERENCED_PARAMETER( FltObjects );
@@ -497,17 +531,10 @@ Return Value:
 
     PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
                   ("FileSystemDriver!FileSystemDriverReadPreOperation: Entered\n") );
-
-	if (NULL != FltObjects->FileObject) {
-		PT_DBG_PRINT( PTDBG_INFORMATION,
-			("Read file: %wZ\n", &FltObjects->FileObject->FileName));
-	}
-
-    // This template code does not do anything with the callbackData, but
-    // rather returns FLT_PREOP_SUCCESS_WITH_CALLBACK.
-    // This passes the request down to the next miniFilter in the chain.
-
-    return FLT_PREOP_SUCCESS_WITH_CALLBACK;
+	
+	if (CheckExtension(fileObj))
+		return FLT_PREOP_SUCCESS_WITH_CALLBACK;
+    return FLT_PREOP_SUCCESS_NO_CALLBACK;
 }
 
 
@@ -552,7 +579,14 @@ Return Value:
 
     PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
                   ("FileSystemDriver!FileSystemDriverReadPostOperation: Entered\n") );
-
+	PFLT_IO_PARAMETER_BLOCK Iopb = Data->Iopb;
+	if (NULL != Iopb && NULL != Iopb->Parameters.Read.ReadBuffer) {
+		ULONG length = Iopb->Parameters.Read.Length;
+		for (ULONG i = 0; i < length; i++) {
+			((CHAR *)Iopb->Parameters.Read.ReadBuffer)[i] ^= 0x55;
+		}
+		FltSetCallbackDataDirty(Data);
+	}
     return FLT_POSTOP_FINISHED_PROCESSING;
 }
 
@@ -596,7 +630,20 @@ The return value is the status of the operation.
 	PT_DBG_PRINT(PTDBG_TRACE_ROUTINES,
 		("FileSystemDriver!FileSystemDriverWritePreOperation: Entered\n"));
 
-	return FLT_PREOP_SUCCESS_WITH_CALLBACK;
+	PFLT_IO_PARAMETER_BLOCK Iopb = Data->Iopb;
+	PFILE_OBJECT fileObj = Iopb->TargetFileObject;
+
+	if (CheckExtension(fileObj)) {
+		if (NULL != Iopb && NULL != Iopb->Parameters.Write.WriteBuffer) {
+			ULONG length = Iopb->Parameters.Write.Length;
+			for (ULONG i = 0; i < length; i++) {
+				((CHAR *)Iopb->Parameters.Write.WriteBuffer)[i] ^= 0x55;
+			}
+			FltSetCallbackDataDirty(Data);
+		}
+	}
+
+	return FLT_PREOP_SUCCESS_NO_CALLBACK;
 }
 
 
@@ -794,7 +841,8 @@ STATUS_SUCCESS - to accept the connection
 	userProcess = PsGetCurrentProcess();
 	clientPort = ClientPort;
 
-	DbgPrint("ClientHandlerPortDisconnect!ClientHandlerPortConnect: connected, port=0x%p\n", ClientPort);
+	PT_DBG_PRINT(PTDBG_TRACE_ROUTINES,
+		("ClientHandlerPortDisconnect!ClientHandlerPortConnect: connected, port=0x%p\n", ClientPort));
 
 	return STATUS_SUCCESS;
 }
@@ -824,8 +872,8 @@ None
 	UNREFERENCED_PARAMETER(ConnectionCookie);
 
 	PAGED_CODE();
-
-	DbgPrint("FileSystemDriver!ClientHandlerPortDisconnect: disconnected, port=0x%p\n", clientPort);
+	PT_DBG_PRINT(PTDBG_TRACE_ROUTINES,
+		("FileSystemDriver!ClientHandlerPortDisconnect: disconnected, port=0x%p\n", clientPort));
 
 	//
 	//  Close our handle to the connection: note, since we limited max connections to 1,
@@ -839,4 +887,58 @@ None
 	//
 
 	userProcess = NULL;
+}
+
+
+NTSTATUS
+ClientHandlerPortMessage(
+	_In_ PVOID PortCookie,
+	_In_opt_ PVOID InputBuffer,
+	_In_ ULONG InputBufferLength,
+	_Out_opt_ PVOID OutputBuffer,
+	_Out_ ULONG OutputBufferLength,
+	_Out_ PULONG ReturnOutputBufferLength
+)
+{
+	UNREFERENCED_PARAMETER(PortCookie);
+	UNREFERENCED_PARAMETER(InputBuffer);
+	UNREFERENCED_PARAMETER(InputBufferLength);
+	UNREFERENCED_PARAMETER(OutputBuffer);
+	UNREFERENCED_PARAMETER(OutputBufferLength);
+	UNREFERENCED_PARAMETER(ReturnOutputBufferLength);
+
+	PT_DBG_PRINT(PTDBG_TRACE_ROUTINES,
+		("FileSystemDriver!ClientHandlerPortMessage: Entered\n"));
+
+	PT_DBG_PRINT(PTDBG_INFORMATION,
+		("Message: %s\n", InputBuffer));
+
+	return STATUS_SUCCESS;
+}
+
+
+
+
+BOOLEAN CheckExtension(_In_ PFILE_OBJECT fileObject) {
+	WCHAR txtExtBuf[] = L".txt";
+	UNICODE_STRING txtExt, fileExt;
+	txtExt.Buffer = txtExtBuf;
+	fileExt.Length = txtExt.Length = sizeof(txtExtBuf) - sizeof(WCHAR);
+	fileExt.MaximumLength = txtExt.MaximumLength = sizeof(txtExtBuf);
+
+	if (NULL != fileObject) {
+		PT_DBG_PRINT(PTDBG_INFORMATION,
+			("Read file: %wZ\n", &fileObject->FileName));
+		if (NULL != fileObject->FileName.Buffer && fileObject->FileName.Length >= txtExt.Length) {
+			fileExt.Buffer = &fileObject->FileName.Buffer[(fileObject->FileName.Length - txtExt.Length) / sizeof(WCHAR)];
+			PT_DBG_PRINT(PTDBG_INFORMATION,
+				("Extension: %wZ\n", &fileExt));
+			if (RtlEqualUnicodeString(&txtExt, &fileExt, TRUE)) {
+				PT_DBG_PRINT(PTDBG_INFORMATION,
+					("Text file detected\n"));
+				return TRUE;
+			}
+		}
+	}
+	return FALSE;
 }
