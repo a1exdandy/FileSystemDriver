@@ -51,6 +51,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="FileSystemDriverCallbacks.c" />
+    <ClCompile Include="FileSystemDriverCommunications.c" />
+    <ClCompile Include="FileSystemDriverUtils.c" />
     <ResourceCompile Include="FileSystemDriver.rc" />
     <ClCompile Include="FileSystemDriver.c" />
     <Inf Include="FileSystemDriver.inf" />
@@ -256,6 +259,9 @@
   <ItemGroup>
     <FilesToPackage Include="$(TargetPath)" />
     <FilesToPackage Include="@(Inf->'%(CopyOutput)')" Condition="'@(Inf)'!=''" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="FileSystemDriver.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
