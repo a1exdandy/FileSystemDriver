@@ -188,7 +188,7 @@ main(
 	_In_reads_(argc) char *argv[]
 )
 {
-	HANDLE port;
+	HANDLE port = NULL;
 	HRESULT hr;
 	DWORD bytes_returned;
 	char buf[256];

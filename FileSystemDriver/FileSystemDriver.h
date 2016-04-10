@@ -24,12 +24,7 @@ PFLT_PORT clientPort;
 #define PTDBG_ERROR                     0x00000010
 
 
-// show all dbg message except PTDBG_TRACE_ROUTINES
-ULONG gTraceFlags =
-PTDBG_TRACE_OPERATION_STATUS |
-PTDBG_INFORMATION |
-PTDBG_WARNING |
-PTDBG_ERROR;
+extern ULONG gTraceFlags;
 
 
 #define PT_DBG_PRINT( _dbgLevel, _string )          \
@@ -58,9 +53,9 @@ _Outptr_result_maybenull_ PVOID *ConnectionCookie
 NTSTATUS
 ClientHandlerPortMessage(
 _In_ PVOID PortCookie,
-_In_ PVOID InputBuffer OPTIONAL,
+_In_opt_ PVOID InputBuffer,
 _In_ ULONG InputBufferLength,
-_Out_ PVOID OutputBuffer OPTIONAL,
+_Out_opt_ PVOID OutputBuffer,
 _Out_ ULONG OutputBufferLength,
 _Out_ PULONG ReturnOutputBufferLength
 );
@@ -150,57 +145,7 @@ BOOLEAN CheckExtension(_In_ PFILE_OBJECT fileObject);
 #pragma alloc_text(PAGE, FileSystemDriverInstanceSetup)
 #endif
 
-
-//
-//  operation registration
-//
-
-CONST FLT_OPERATION_REGISTRATION Callbacks[] = {
-
-	/* temporary disable create callback
-	{ IRP_MJ_CREATE,
-	0,
-	FileSystemDriverCreatePreOperation,
-	FileSystemDriverCreatePostOperation },
-	*/
-
-	{ IRP_MJ_READ,
-	0,
-	FileSystemDriverReadPreOperation,
-	FileSystemDriverReadPostOperation },
-
-	{ IRP_MJ_WRITE,
-	0,
-	FileSystemDriverWritePreOperation,
-	FileSystemDriverWritePostOperation },
-
-	{ IRP_MJ_OPERATION_END }
-};
-
-//
-//  This defines what we want to filter with FltMgr
-//
-
-CONST FLT_REGISTRATION FilterRegistration = {
-
-	sizeof(FLT_REGISTRATION),         //  Size
-	FLT_REGISTRATION_VERSION,           //  Version
-	0,                                  //  Flags
-
-	NULL,                               //  Context
-	Callbacks,                          //  Operation callbacks
-
-	FileSystemDriverUnload,                           //  MiniFilterUnload
-
-	FileSystemDriverInstanceSetup,                    //  InstanceSetup
-	FileSystemDriverInstanceQueryTeardown,            //  InstanceQueryTeardown
-
-	NULL,                               //  InstanceTeardownStart
-	NULL,                               //  InstanceTeardownComplete
-	NULL,                               //  GenerateFileName
-	NULL,                               //  GenerateDestinationFileName
-	NULL                                //  NormalizeNameComponent
-
-};
+extern CONST FLT_OPERATION_REGISTRATION Callbacks[];
+extern CONST FLT_REGISTRATION FilterRegistration;
 
 #endif
