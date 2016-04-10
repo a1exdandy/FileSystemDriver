@@ -53,6 +53,7 @@
   <ItemGroup>
     <ClCompile Include="FileSystemDriverCallbacks.c" />
     <ClCompile Include="FileSystemDriverCommunications.c" />
+    <ClCompile Include="FileSystemDriverGlobalsInit.c" />
     <ClCompile Include="FileSystemDriverUtils.c" />
     <ResourceCompile Include="FileSystemDriver.rc" />
     <ClCompile Include="FileSystemDriver.c" />

@@ -128,7 +128,7 @@ _Out_ PULONG ReturnOutputBufferLength
 		("FileSystemDriver!ClientHandlerPortMessage: Entered\n"));
 
 	PT_DBG_PRINT(PTDBG_INFORMATION,
-		("Message: %s\n", InputBuffer));
+		("Message: %s\n", (char *)InputBuffer));
 
 	return STATUS_SUCCESS;
 }
