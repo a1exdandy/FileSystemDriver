@@ -247,7 +247,7 @@ The return value is the status of the operation.
 	PT_DBG_PRINT(PTDBG_TRACE_ROUTINES,
 		("FileSystemDriver!FileSystemDriverCreatePreOperation: Entered\n"));
 
-	return FLT_PREOP_SUCCESS_WITH_CALLBACK;
+	return FLT_PREOP_SUCCESS_NO_CALLBACK;
 }
 
 

@@ -38,6 +38,8 @@ main(
 	HRESULT hr;
 	DWORD bytes_returned;
 	char buf[256];
+	char out_buf[256];
+
 
 	//
 	//  Open a commuication channel to the filter
@@ -54,7 +56,9 @@ main(
 		fgets(buf, sizeof(buf), stdin);
 		if (strcmp(buf, "exit\n") == 0)
 			break;
-		FilterSendMessage(port, buf, strlen(buf), NULL, 0, &bytes_returned);
+		FilterSendMessage(port, buf, strlen(buf), out_buf, sizeof(out_buf), &bytes_returned);
+		out_buf[bytes_returned] = 0;
+		printf("%d bytes returned: %s\n", bytes_returned, out_buf);
 	}
 
 	CloseHandle(port);

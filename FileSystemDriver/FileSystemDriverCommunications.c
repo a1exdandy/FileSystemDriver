@@ -129,6 +129,14 @@ _Out_ PULONG ReturnOutputBufferLength
 
 	PT_DBG_PRINT(PTDBG_INFORMATION,
 		("Message: %s\n", (char *)InputBuffer));
+	
+	if (OutputBuffer != NULL && OutputBufferLength >= InputBufferLength) {
+		PT_DBG_PRINT(PTDBG_INFORMATION, ("buf: %p len: %d\n", OutputBuffer, OutputBufferLength));
+		memcpy(OutputBuffer, InputBuffer, InputBufferLength);
+		*ReturnOutputBufferLength = InputBufferLength;
+
+	}
+
 
 	return STATUS_SUCCESS;
 }
