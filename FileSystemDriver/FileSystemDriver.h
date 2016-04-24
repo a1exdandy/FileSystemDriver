@@ -36,6 +36,11 @@ extern ULONG gTraceFlags;
 Prototypes
 *************************************************************************/
 
+void
+FileClearCache(
+PFILE_OBJECT pFileObject
+);
+
 VOID
 ClientHandlerPortDisconnect(
 _In_opt_ PVOID ConnectionCookie
