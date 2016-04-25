@@ -47,6 +47,17 @@ The return value is the status of the operation.
 	PT_DBG_PRINT(PTDBG_TRACE_ROUTINES,
 		("FileSystemDriver!FileSystemDriverReadPreOperation: Entered\n"));
 
+	PCTX_INSTANCE_CONTEXT instanceContext;
+
+	NTSTATUS status = FltGetInstanceContext(FltObjects->Instance, &instanceContext);
+	if (!NT_SUCCESS(status))
+	{
+		PT_DBG_PRINT(PTDBG_TRACE_ROUTINES, ("FileSystemDriver!FileSystemDriverReadPreOperation: Fails on FltGetInstanceContext. Status=%08x\n", status));
+		return FLT_PREOP_SUCCESS_NO_CALLBACK;
+	}
+	PT_DBG_PRINT(PTDBG_INFORMATION, ("Reading file from volume with name: %wZ\n", instanceContext->VolumeName));
+	FltReleaseContext(instanceContext);
+
 	if (CheckExtension(fileObj))
 		return FLT_PREOP_SUCCESS_WITH_CALLBACK;
 	return FLT_PREOP_SUCCESS_NO_CALLBACK;

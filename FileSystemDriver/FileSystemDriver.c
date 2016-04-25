@@ -1,156 +1,112 @@
-/*++
-
-Module Name:
-
-    FileSystemDriver.c
-
-Abstract:
-
-    This is the main module of the FileSystemDriver miniFilter driver.
-
-Environment:
-
-    Kernel mode
-
---*/
-
 #include "FileSystemDriver.h"
 
-NTSTATUS
-FileSystemDriverInstanceSetup (
-    _In_ PCFLT_RELATED_OBJECTS FltObjects,
-    _In_ FLT_INSTANCE_SETUP_FLAGS Flags,
-    _In_ DEVICE_TYPE VolumeDeviceType,
-    _In_ FLT_FILESYSTEM_TYPE VolumeFilesystemType
-    )
-/*++
-
-Routine Description:
-
-    This routine is called whenever a new instance is created on a volume. This
-    gives us a chance to decide if we need to attach to this volume or not.
-
-    If this routine is not defined in the registration structure, automatic
-    instances are always created.
-
-Arguments:
-
-    FltObjects - Pointer to the FLT_RELATED_OBJECTS data structure containing
-        opaque handles to this filter, instance and its associated volume.
-
-    Flags - Flags describing the reason for this attach request.
-
-Return Value:
-
-    STATUS_SUCCESS - attach
-    STATUS_FLT_DO_NOT_ATTACH - do not attach
-
---*/
+NTSTATUS FileSystemDriverInstanceSetup (_In_ PCFLT_RELATED_OBJECTS FltObjects, _In_ FLT_INSTANCE_SETUP_FLAGS Flags, _In_ DEVICE_TYPE VolumeDeviceType, _In_ FLT_FILESYSTEM_TYPE VolumeFilesystemType)
 {
-	/*NTSTATUS status;*/
-
-    UNREFERENCED_PARAMETER( FltObjects );
-    UNREFERENCED_PARAMETER( Flags );
-    UNREFERENCED_PARAMETER( VolumeDeviceType );
-    UNREFERENCED_PARAMETER( VolumeFilesystemType );
+    UNREFERENCED_PARAMETER(Flags);
+    UNREFERENCED_PARAMETER(VolumeDeviceType);
+    UNREFERENCED_PARAMETER(VolumeFilesystemType);
 
     PAGED_CODE();
-
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("FileSystemDriver!FileSystemDriverInstanceSetup: Entered\n") );
-	/*
-	if (NULL != FltObjects->Volume) {
-		WCHAR buffer[MAX_BUFFER_SIZE];
-		UNICODE_STRING volumeName;
-		RtlInitEmptyUnicodeString(&volumeName, buffer, MAX_BUFFER_SIZE);
-		status = FltGetVolumeName(FltObjects->Volume, NULL, NULL);
-		if (NT_SUCCESS(status)) {
-			PT_DBG_PRINT(PTDBG_INFORMATION,
-				("Volume name: %wZ\n", volumeName));
-		} else {
-			PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS,
-				("FileSystemDriver!DriverEntry: FltGetVolumeName Failed, status=%08x\n", status));
-		}
-	} else {
-		PT_DBG_PRINT(PTDBG_WARNING,
-			("FltObjects->Volume is NULL\n"));
+	
+    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES, ("FileSystemDriver!FileSystemDriverInstanceSetup: Entered\n") );
+	
+	if (NULL == FltObjects->Volume)
+	{
+		PT_DBG_PRINT(PTDBG_TRACE_ROUTINES, ("FileSystemDriver!FileSystemDriverInstanceSetup: Volume is NULL\n"));
+		return STATUS_FLT_DO_NOT_ATTACH;
 	}
-	*/
 
+	ULONG needed = 0;
+	NTSTATUS status = FltGetVolumeGuidName(FltObjects->Volume, NULL, &needed);
+	if (STATUS_BUFFER_TOO_SMALL != status)
+	{
+		PT_DBG_PRINT(PTDBG_TRACE_ROUTINES, ("FileSystemDriver!FileSystemDriverInstanceSetup: Error on first call FltGetVolumeGuidName Status=%08x\n", status));
+		return STATUS_FLT_DO_NOT_ATTACH;
+	}
+	
+	PCTX_INSTANCE_CONTEXT instanceContext = NULL;
+	status = FltAllocateContext(FltObjects->Filter, FLT_INSTANCE_CONTEXT, CTX_INSTANCE_CONTEXT_SIZE, NonPagedPool,	&instanceContext);
+	if (!NT_SUCCESS(status))
+	{
+		PT_DBG_PRINT(PTDBG_TRACE_ROUTINES, ("FileSystemDriver!FileSystemDriverInstanceSetup: Can't allocate context! Status=%08x\n", status));
+		return STATUS_FLT_DO_NOT_ATTACH;
+	}
+
+	instanceContext->VolumeName.Length = 0;
+	instanceContext->Instance = FltObjects->Instance;
+	instanceContext->Volume = FltObjects->Volume;
+	instanceContext->VolumeName.MaximumLength = (USHORT) needed;
+	
+	instanceContext->VolumeName.Buffer = ExAllocatePoolWithTag(PagedPool, instanceContext->VolumeName.MaximumLength, CTX_STRING_TAG);
+	if (NULL == instanceContext->VolumeName.Buffer)
+	{
+		PT_DBG_PRINT(PTDBG_TRACE_ROUTINES, ("FileSystemDriver!FileSystemDriverInstanceSetup: Error on memory allocation!\n"));
+		FltReleaseContext(instanceContext);
+		return STATUS_FLT_DO_NOT_ATTACH;
+	}
+	
+	status = FltGetVolumeGuidName(FltObjects->Volume, &instanceContext->VolumeName, &needed);
+	if (!NT_SUCCESS(status))
+	{
+		PT_DBG_PRINT(PTDBG_TRACE_ROUTINES, ("FileSystemDriver!FileSystemDriverInstanceSetup: Can't get volume name! Status=%08x\n", status));
+		FltReleaseContext(instanceContext);
+		return STATUS_FLT_DO_NOT_ATTACH;
+	}
+
+	PT_DBG_PRINT(PTDBG_INFORMATION, ("Volume name: %wZ\n", instanceContext->VolumeName));
+
+	status = FltSetInstanceContext(FltObjects->Instance, FLT_SET_CONTEXT_KEEP_IF_EXISTS, instanceContext, NULL);
+	if (!NT_SUCCESS(status))
+	{
+		PT_DBG_PRINT(PTDBG_TRACE_ROUTINES, ("FileSystemDriver!FileSystemDriverInstanceSetup: Can't set instance context! Status=%08x\n", status));
+		FltReleaseContext(instanceContext);
+		return STATUS_FLT_DO_NOT_ATTACH;
+	}
+	
+	FltReleaseContext(instanceContext);
+	
     return STATUS_SUCCESS;
 }
 
-
-NTSTATUS
-FileSystemDriverInstanceQueryTeardown (
-	_In_ PCFLT_RELATED_OBJECTS FltObjects,
-	_In_ FLT_INSTANCE_QUERY_TEARDOWN_FLAGS Flags
-)
-/*++
-
-Routine Description:
-
-This is called when an instance is being manually deleted by a
-call to FltDetachVolume or FilterDetach thereby giving us a
-chance to fail that detach request.
-
-If this routine is not defined in the registration structure, explicit
-detach requests via FltDetachVolume or FilterDetach will always be
-failed.
-
-Arguments:
-
-FltObjects - Pointer to the FLT_RELATED_OBJECTS data structure containing
-opaque handles to this filter, instance and its associated volume.
-
-Flags - Indicating where this detach request came from.
-
-Return Value:
-
-Returns the status of this operation.
-
---*/
+VOID CtxInstanceTeardownComplete(_In_ PCFLT_RELATED_OBJECTS FltObjects, _In_ FLT_INSTANCE_TEARDOWN_FLAGS Flags)
 {
-	UNREFERENCED_PARAMETER( FltObjects );
-	UNREFERENCED_PARAMETER( Flags );
+	UNREFERENCED_PARAMETER(Flags);
+	PCTX_INSTANCE_CONTEXT instanceContext;
 
 	PAGED_CODE();
 
-	PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-		("FileSystemDriver!FileSystemDriverInstanceQueryTeardown: Entered\n") );
+	PT_DBG_PRINT(PTDBG_TRACE_ROUTINES, ("FileSystemDriver!FileSystemDriverInstanceTeardownComplete: Entered\n"));
 
-	return STATUS_SUCCESS;
+	NTSTATUS status = FltGetInstanceContext(FltObjects->Instance, &instanceContext);
+	if (!NT_SUCCESS(status))
+	{
+		PT_DBG_PRINT(PTDBG_TRACE_ROUTINES, ("FileSystemDriver!FileSystemDriverInstanceQueryTeardown: Fails on FltGetInstanceContext. Status=%08x\n", status));
+		return;
+	}
+
+	PT_DBG_PRINT(PTDBG_INFORMATION, ("Unregistering context with volume name: %wZ\n", instanceContext->VolumeName));
+
+	FltReleaseContext(instanceContext);
+
+	PT_DBG_PRINT(PTDBG_TRACE_ROUTINES, ("FileSystemDriver!FileSystemDriverInstanceTeardownComplete: Completed!\n"));
+}
+
+VOID CtxContextCleanup(_In_ PFLT_CONTEXT Context, _In_ FLT_CONTEXT_TYPE ContextType)
+{
+	PAGED_CODE();
+
+	switch (ContextType) {
+	case FLT_INSTANCE_CONTEXT:
+		ExFreePoolWithTag(((PCTX_INSTANCE_CONTEXT)Context)->VolumeName.Buffer, CTX_STRING_TAG);
+		break;
+	}
 }
 
 /*************************************************************************
     MiniFilter initialization and unload routines.
 *************************************************************************/
 
-NTSTATUS
-DriverEntry (
-    _In_ PDRIVER_OBJECT DriverObject,
-    _In_ PUNICODE_STRING RegistryPath
-    )
-/*++
-
-Routine Description:
-
-    This is the initialization routine for this miniFilter driver.  This
-    registers with FltMgr and initializes all global data structures.
-
-Arguments:
-
-    DriverObject - Pointer to driver object created by the system to
-        represent this driver.
-
-    RegistryPath - Unicode string identifying where the parameters for this
-        driver are located in the registry.
-
-Return Value:
-
-    Routine can return non success error codes.
-
---*/
+NTSTATUS DriverEntry (_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING RegistryPath)
 {
     NTSTATUS status = STATUS_SUCCESS;
 	OBJECT_ATTRIBUTES oa;
@@ -159,128 +115,74 @@ Return Value:
 
 	ExInitializeDriverRuntime(DrvRtPoolNxOptIn);
 
-    UNREFERENCED_PARAMETER( RegistryPath );
+    UNREFERENCED_PARAMETER(RegistryPath);
 
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("FileSystemDriver!DriverEntry: Entered\n") );
+    PT_DBG_PRINT(PTDBG_TRACE_ROUTINES, ("FileSystemDriver!DriverEntry: Entered\n"));
 
-    //
-    //  Register with FltMgr to tell it our callback routines
-    //
-
-	try {
-
-		status = FltRegisterFilter(DriverObject,
-			&FilterRegistration,
-			&gFilterHandle);
-
-		if (!NT_SUCCESS(status)) {
-			PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS,
-				("FileSystemDriver!DriverEntry: FltREgisterFilter Failed, status=%08x\n",
-				status));
+	try
+	{
+		status = FltRegisterFilter(DriverObject, &FilterRegistration, &gFilterHandle);
+		if (!NT_SUCCESS(status))
+		{
+			PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS, ("FileSystemDriver!DriverEntry: FltREgisterFilter Failed, status=%08x\n", status));
 			leave;
 		}
 
 		RtlInitUnicodeString(&uniString, L"\\FileSystemDriver");
 
 		status = FltBuildDefaultSecurityDescriptor(&sd, FLT_PORT_ALL_ACCESS);
-		if (!NT_SUCCESS(status)) {
-			PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS,
-				("FileSystemDriver!DriverEntry: FltBuildDefaultSecurityDescriptor Failed, status=%08x\n",
-				status));
+		if (!NT_SUCCESS(status))
+		{
+			PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS, ("FileSystemDriver!DriverEntry: FltBuildDefaultSecurityDescriptor Failed, status=%08x\n", status));
 			leave;
 		}
 
-		InitializeObjectAttributes(&oa,
-			&uniString,
-			OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE,
-			NULL,
-			sd);
+		InitializeObjectAttributes(&oa, &uniString,	OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE, NULL,	sd);
 
-		status = FltCreateCommunicationPort(gFilterHandle,
-			&serverPort,
-			&oa,
-			NULL,
-			ClientHandlerPortConnect,
-			ClientHandlerPortDisconnect,
-			ClientHandlerPortMessage,
-			1);
-
-		//
-		//  Free the security descriptor in all cases.	It is not needed once
-		//  the call to FltCreateCommunicationPort() is made.
-		//
-		FltFreeSecurityDescriptor(sd);
+		status = FltCreateCommunicationPort(gFilterHandle, &serverPort, &oa, NULL, ClientHandlerPortConnect, ClientHandlerPortDisconnect, ClientHandlerPortMessage,	1);
 		
-		if (!NT_SUCCESS(status)) {
-			PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS,
-				("FileSystemDriver!DriverEntry: ltCreateCommunicationPort Failed, status=%08x\n",
-				status));
+		FltFreeSecurityDescriptor(sd);
+		if (!NT_SUCCESS(status))
+		{
+			PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS, ("FileSystemDriver!DriverEntry: ltCreateCommunicationPort Failed, status=%08x\n", status));
 			leave;
 		}
 
-		//
-		//  Start filtering i/o
-		//
 		status = FltStartFiltering(gFilterHandle);
-
-		if (!NT_SUCCESS(status)) {
-			PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS,
-				("FileSystemDriver!DriverEntry: FltStartFiltering Failed, status=%08x\n",
-				status));
+		if (!NT_SUCCESS(status))
+		{
+			PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS, ("FileSystemDriver!DriverEntry: FltStartFiltering Failed, status=%08x\n", status));
 			leave;
 		}
 
-	} finally {
-
-		if (!NT_SUCCESS(status)) {
-			
-			if (NULL != serverPort) {
+	} finally
+	{
+		if (!NT_SUCCESS(status))
+		{
+			if (NULL != serverPort)
 				FltCloseCommunicationPort(serverPort);
-			}
 
-			if (NULL != gFilterHandle) {
+			if (NULL != gFilterHandle)
 				FltUnregisterFilter(gFilterHandle);
-			}
-
 		}
 	}
 
     return status;
 }
 
-NTSTATUS
-FileSystemDriverUnload (
-    _In_ FLT_FILTER_UNLOAD_FLAGS Flags
-    )
-/*++
-
-Routine Description:
-
-    This is the unload routine for this miniFilter driver. This is called
-    when the minifilter is about to be unloaded. We can fail this unload
-    request if this is not a mandatory unload indicated by the Flags
-    parameter.
-
-Arguments:
-
-    Flags - Indicating if this is a mandatory unload.
-
-Return Value:
-
-    Returns STATUS_SUCCESS.
-
---*/
+NTSTATUS FileSystemDriverUnload (_In_ FLT_FILTER_UNLOAD_FLAGS Flags)
 {
-    UNREFERENCED_PARAMETER( Flags );
+    UNREFERENCED_PARAMETER(Flags);
 
     PAGED_CODE();
 
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("FileSystemDriver!FileSystemDriverUnload: Entered\n") );
+    PT_DBG_PRINT(PTDBG_TRACE_ROUTINES, ("FileSystemDriver!FileSystemDriverUnload: Entered\n"));
 
-	FltCloseCommunicationPort( serverPort );
-    FltUnregisterFilter( gFilterHandle );
+	FltCloseCommunicationPort(serverPort);
+	PT_DBG_PRINT(PTDBG_TRACE_ROUTINES, ("FileSystemDriver!FileSystemDriverUnload: Communication port closed\n"));
+
+    FltUnregisterFilter(gFilterHandle);
+	PT_DBG_PRINT(PTDBG_TRACE_ROUTINES, ("FileSystemDriver!FileSystemDriverUnload: FilterUnregistered\n"));
 
     return STATUS_SUCCESS;
 }
