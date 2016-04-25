@@ -192,3 +192,4 @@ ModelManifest.xml
 *.vcxproj
 *.vcxproj.filters
 *.rc
+*.sln
