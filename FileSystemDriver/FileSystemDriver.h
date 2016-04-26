@@ -86,6 +86,8 @@ FileSystemDriverUnload(
 _In_ FLT_FILTER_UNLOAD_FLAGS Flags
 );
 
+VOID CtxInstanceTeardownComplete(_In_ PCFLT_RELATED_OBJECTS FltObjects, _In_ FLT_INSTANCE_TEARDOWN_FLAGS Flags);
+
 NTSTATUS
 FileSystemDriverInstanceQueryTeardown(
 _In_ PCFLT_RELATED_OBJECTS FltObjects,
@@ -137,6 +139,8 @@ _In_opt_ PVOID CompletionContext,
 _In_ FLT_POST_OPERATION_FLAGS Flags
 );
 
+VOID CtxContextCleanup(_In_ PFLT_CONTEXT Context, _In_ FLT_CONTEXT_TYPE ContextType);
+
 BOOLEAN CheckExtension(_In_ PFILE_OBJECT fileObject);
 
 //
@@ -146,8 +150,9 @@ BOOLEAN CheckExtension(_In_ PFILE_OBJECT fileObject);
 #ifdef ALLOC_PRAGMA
 #pragma alloc_text(INIT, DriverEntry)
 #pragma alloc_text(PAGE, FileSystemDriverUnload)
-#pragma alloc_text(PAGE, FileSystemDriverInstanceQueryTeardown)
+#pragma alloc_text(PAGE, CtxInstanceTeardownComplete)
 #pragma alloc_text(PAGE, FileSystemDriverInstanceSetup)
+#pragma alloc_text(PAGE, CtxContextCleanup)
 #endif
 
 extern CONST FLT_OPERATION_REGISTRATION Callbacks[];

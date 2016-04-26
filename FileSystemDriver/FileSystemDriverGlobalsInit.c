@@ -13,24 +13,31 @@ ULONG gTraceFlags =
 
 CONST FLT_REGISTRATION FilterRegistration = {
 
-	sizeof(FLT_REGISTRATION),         //  Size
+	sizeof(FLT_REGISTRATION),           //  Size
 	FLT_REGISTRATION_VERSION,           //  Version
 	0,                                  //  Flags
-
-	NULL,                               //  Context
+	ContextRegistration,                //  Context
 	Callbacks,                          //  Operation callbacks
-
-	FileSystemDriverUnload,                           //  MiniFilterUnload
-
-	FileSystemDriverInstanceSetup,                    //  InstanceSetup
-	FileSystemDriverInstanceQueryTeardown,            //  InstanceQueryTeardown
-
+	FileSystemDriverUnload,             //  MiniFilterUnload
+	FileSystemDriverInstanceSetup,      //  InstanceSetup
+	NULL,								//  InstanceQueryTeardown
 	NULL,                               //  InstanceTeardownStart
-	NULL,                               //  InstanceTeardownComplete
+	CtxInstanceTeardownComplete,        //  InstanceTeardownComplete
 	NULL,                               //  GenerateFileName
 	NULL,                               //  GenerateDestinationFileName
 	NULL                                //  NormalizeNameComponent
 
+};
+
+const FLT_CONTEXT_REGISTRATION ContextRegistration[] = {
+
+	{ FLT_INSTANCE_CONTEXT,
+	0,
+	CtxContextCleanup,
+	CTX_INSTANCE_CONTEXT_SIZE,
+	CTX_OBJECT_TAG },
+
+	{ FLT_CONTEXT_END }
 };
 
 CONST FLT_OPERATION_REGISTRATION Callbacks[] = {
