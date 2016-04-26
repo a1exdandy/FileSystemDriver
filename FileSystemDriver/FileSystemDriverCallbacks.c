@@ -47,6 +47,10 @@ The return value is the status of the operation.
 	PT_DBG_PRINT(PTDBG_TRACE_ROUTINES,
 		("FileSystemDriver!FileSystemDriverReadPreOperation: Entered\n"));
 
+	PEPROCESS proc = IoThreadToProcess(Data->Thread);
+	HANDLE pid = PsGetProcessId(proc);
+	PT_DBG_PRINT(PTDBG_INFORMATION, ("PID IS: %d\n", pid));
+
 	PCTX_INSTANCE_CONTEXT instanceContext;
 
 	NTSTATUS status = FltGetInstanceContext(FltObjects->Instance, &instanceContext);
