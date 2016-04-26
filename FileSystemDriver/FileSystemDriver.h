@@ -32,6 +32,13 @@ extern ULONG gTraceFlags;
         DbgPrint _string :                          \
         ((int)0))
 
+typedef struct _CTX_INSTANCE_CONTEXT {
+	PFLT_INSTANCE Instance;
+	PFLT_VOLUME Volume;
+	UNICODE_STRING VolumeName;
+} CTX_INSTANCE_CONTEXT, *PCTX_INSTANCE_CONTEXT;
+
+#define CTX_INSTANCE_CONTEXT_SIZE         sizeof( CTX_INSTANCE_CONTEXT )
 /*************************************************************************
 Prototypes
 *************************************************************************/
