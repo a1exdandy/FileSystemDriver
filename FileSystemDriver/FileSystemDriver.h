@@ -15,6 +15,10 @@ PFLT_PORT serverPort;
 PEPROCESS userProcess;
 PFLT_PORT clientPort;
 
+//tags
+#define CTX_STRING_TAG 'CTXt'
+#define CTX_OBJECT_TAG 'CTXo'
+
 #define MAX_BUFFER_SIZE 2048
 
 #define PTDBG_TRACE_ROUTINES            0x00000001
@@ -32,6 +36,13 @@ extern ULONG gTraceFlags;
         DbgPrint _string :                          \
         ((int)0))
 
+typedef struct _CTX_INSTANCE_CONTEXT {
+	PFLT_INSTANCE Instance;
+	PFLT_VOLUME Volume;
+	UNICODE_STRING VolumeName;
+} CTX_INSTANCE_CONTEXT, *PCTX_INSTANCE_CONTEXT;
+
+#define CTX_INSTANCE_CONTEXT_SIZE         sizeof( CTX_INSTANCE_CONTEXT )
 /*************************************************************************
 Prototypes
 *************************************************************************/
@@ -86,6 +97,8 @@ FileSystemDriverUnload(
 _In_ FLT_FILTER_UNLOAD_FLAGS Flags
 );
 
+VOID CtxInstanceTeardownComplete(_In_ PCFLT_RELATED_OBJECTS FltObjects, _In_ FLT_INSTANCE_TEARDOWN_FLAGS Flags);
+
 NTSTATUS
 FileSystemDriverInstanceQueryTeardown(
 _In_ PCFLT_RELATED_OBJECTS FltObjects,
@@ -137,6 +150,8 @@ _In_opt_ PVOID CompletionContext,
 _In_ FLT_POST_OPERATION_FLAGS Flags
 );
 
+VOID CtxContextCleanup(_In_ PFLT_CONTEXT Context, _In_ FLT_CONTEXT_TYPE ContextType);
+
 BOOLEAN CheckExtension(_In_ PFILE_OBJECT fileObject);
 
 //
@@ -146,11 +161,13 @@ BOOLEAN CheckExtension(_In_ PFILE_OBJECT fileObject);
 #ifdef ALLOC_PRAGMA
 #pragma alloc_text(INIT, DriverEntry)
 #pragma alloc_text(PAGE, FileSystemDriverUnload)
-#pragma alloc_text(PAGE, FileSystemDriverInstanceQueryTeardown)
+#pragma alloc_text(PAGE, CtxInstanceTeardownComplete)
 #pragma alloc_text(PAGE, FileSystemDriverInstanceSetup)
+#pragma alloc_text(PAGE, CtxContextCleanup)
 #endif
 
 extern CONST FLT_OPERATION_REGISTRATION Callbacks[];
 extern CONST FLT_REGISTRATION FilterRegistration;
+extern const FLT_CONTEXT_REGISTRATION ContextRegistration[];
 
 #endif
