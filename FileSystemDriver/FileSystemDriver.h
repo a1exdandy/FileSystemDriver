@@ -15,6 +15,10 @@ PFLT_PORT serverPort;
 PEPROCESS userProcess;
 PFLT_PORT clientPort;
 
+//tags
+#define CTX_STRING_TAG 'CTXt'
+#define CTX_OBJECT_TAG 'CTXo'
+
 #define MAX_BUFFER_SIZE 2048
 
 #define PTDBG_TRACE_ROUTINES            0x00000001
