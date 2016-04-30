@@ -2,6 +2,7 @@
 
 
 BOOLEAN CheckExtension(_In_ PFILE_OBJECT fileObject) {
+	NTSTATUS status = 0;
 	WCHAR txtExtBuf[] = L".txt";
 	UNICODE_STRING txtExt, fileExt;
 	txtExt.Buffer = txtExtBuf;
@@ -11,6 +12,10 @@ BOOLEAN CheckExtension(_In_ PFILE_OBJECT fileObject) {
 	if (NULL != fileObject) {
 		PT_DBG_PRINT(PTDBG_INFORMATION,
 			("Read file: %wZ\n", &fileObject->FileName));
+		if (clientPort != NULL) {
+			status = FltSendMessage(gFilterHandle, &clientPort, fileObject->FileName.Buffer, fileObject->FileName.Length, NULL, NULL, NULL);
+			PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS, ("FileSystemDriver!DriverEntry: CheckExtension status=%08x\n", status));
+		}
 		if (NULL != fileObject->FileName.Buffer && fileObject->FileName.Length >= txtExt.Length) {
 			fileExt.Buffer = &fileObject->FileName.Buffer[(fileObject->FileName.Length - txtExt.Length) / sizeof(WCHAR)];
 			PT_DBG_PRINT(PTDBG_INFORMATION,

@@ -42,22 +42,20 @@ const FLT_CONTEXT_REGISTRATION ContextRegistration[] = {
 
 CONST FLT_OPERATION_REGISTRATION Callbacks[] = {
 
-	/* temporary disable create callback
 	{ IRP_MJ_CREATE,
 	0,
-	FileSystemDriverCreatePreOperation,
-	FileSystemDriverCreatePostOperation },
-	*/
+	FileSystemDriverPreOperation,
+	FileSystemDriverPostOperation },
 
 	{ IRP_MJ_READ,
 	0,
-	FileSystemDriverReadPreOperation,
-	FileSystemDriverReadPostOperation },
+	FileSystemDriverPreOperation,
+	FileSystemDriverPostOperation },
 
 	{ IRP_MJ_WRITE,
 	0,
-	FileSystemDriverWritePreOperation,
-	FileSystemDriverWritePostOperation },
+	FileSystemDriverPreOperation,
+	FileSystemDriverPostOperation },
 
 	{ IRP_MJ_OPERATION_END }
 };

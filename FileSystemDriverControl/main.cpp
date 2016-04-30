@@ -27,6 +27,10 @@ User mode
 #include <assert.h>
 #include <fltuser.h>
 #include <dontuse.h>
+#include <wchar.h>
+
+#define CLIENT_SIDE
+#include "../FileSystemDriver/FileSystemDriver.h"
 
 int _cdecl
 main(
@@ -37,9 +41,8 @@ main(
 	HANDLE port = NULL;
 	HRESULT hr;
 	DWORD bytes_returned;
-	char buf[256];
-	char out_buf[256];
-
+	MESSAGE_STRUCT message;
+	
 
 	//
 	//  Open a commuication channel to the filter
@@ -53,13 +56,21 @@ main(
 	}
 
 	for (;;) {
+		int status = FilterGetMessage(port, (PFILTER_MESSAGE_HEADER)&message, sizeof(MESSAGE_STRUCT), NULL);
+		wprintf(L"op: %d\n", message.body.ioOpType);
+		wprintf(L"guid: %s\n", message.body.guid);
+		wprintf(L"path: %s\n\n", message.body.path);
+	}
+
+	/* example
+	for (;;) {
 		fgets(buf, sizeof(buf), stdin);
 		if (strcmp(buf, "exit\n") == 0)
 			break;
 		FilterSendMessage(port, buf, strlen(buf), out_buf, sizeof(out_buf), &bytes_returned);
 		out_buf[bytes_returned] = 0;
 		printf("%d bytes returned: %s\n", bytes_returned, out_buf);
-	}
+	}*/
 
 	CloseHandle(port);
 	return hr;
