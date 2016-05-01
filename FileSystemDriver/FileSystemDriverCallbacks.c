@@ -13,7 +13,6 @@ _In_ PCFLT_RELATED_OBJECTS FltObjects,
 _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
 )
 {
-
 	UNREFERENCED_PARAMETER(Data);
 	UNREFERENCED_PARAMETER(FltObjects);
 	UNREFERENCED_PARAMETER(CompletionContext);
@@ -50,9 +49,9 @@ _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
 				}
 				message.ioOpType = Data->Iopb->MajorFunction;
 				RtlCopyMemory(message.guid, instanceContext->VolumeName.Buffer, instanceContext->VolumeName.Length);
-				message.guid[instanceContext->VolumeName.Length / 2] = L'\0';
+				message.guid[instanceContext->VolumeName.Length / sizeof(WCHAR)] = L'\0';
 				RtlCopyMemory(message.path, fileInformation->Name.Buffer, fileInformation->Name.Length);
-				message.path[fileInformation->Name.Length / 2] = L'\0';
+				message.path[fileInformation->Name.Length / sizeof(WCHAR)] = L'\0';
 				status = FltSendMessage(gFilterHandle, &clientPort, &message, sizeof(MESSAGE_BODY_STRUCT), NULL, NULL, NULL);
 				if (!NT_SUCCESS(status)) {
 					PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS, ("FileSystemDriver!FileSystemDriverPreOperation: Fails on FltSendMessage, status=%08x\n", status));

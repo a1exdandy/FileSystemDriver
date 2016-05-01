@@ -123,53 +123,6 @@ _In_opt_ PVOID CompletionContext,
 _In_ FLT_POST_OPERATION_FLAGS Flags
 );
 
-
-/*
-FLT_PREOP_CALLBACK_STATUS
-FileSystemDriverReadPreOperation(
-_Inout_ PFLT_CALLBACK_DATA Data,
-_In_ PCFLT_RELATED_OBJECTS FltObjects,
-_Flt_CompletionContext_Outptr_ PVOID *CompletionContext
-);
-
-FLT_POSTOP_CALLBACK_STATUS
-FileSystemDriverReadPostOperation(
-_Inout_ PFLT_CALLBACK_DATA Data,
-_In_ PCFLT_RELATED_OBJECTS FltObjects,
-_In_opt_ PVOID CompletionContext,
-_In_ FLT_POST_OPERATION_FLAGS Flags
-);
-
-FLT_PREOP_CALLBACK_STATUS
-FileSystemDriverWritePreOperation(
-_Inout_ PFLT_CALLBACK_DATA Data,
-_In_ PCFLT_RELATED_OBJECTS FltObjects,
-_Flt_CompletionContext_Outptr_ PVOID *CompletionContext
-);
-
-FLT_POSTOP_CALLBACK_STATUS
-FileSystemDriverWritePostOperation(
-_Inout_ PFLT_CALLBACK_DATA Data,
-_In_ PCFLT_RELATED_OBJECTS FltObjects,
-_In_opt_ PVOID CompletionContext,
-_In_ FLT_POST_OPERATION_FLAGS Flags
-);
-
-FLT_PREOP_CALLBACK_STATUS
-FileSystemDriverCreatePreOperation(
-_Inout_ PFLT_CALLBACK_DATA Data,
-_In_ PCFLT_RELATED_OBJECTS FltObjects,
-_Flt_CompletionContext_Outptr_ PVOID *CompletionContext
-);
-
-FLT_POSTOP_CALLBACK_STATUS
-FileSystemDriverCreatePostOperation(
-_Inout_ PFLT_CALLBACK_DATA Data,
-_In_ PCFLT_RELATED_OBJECTS FltObjects,
-_In_opt_ PVOID CompletionContext,
-_In_ FLT_POST_OPERATION_FLAGS Flags
-);*/
-
 VOID CtxContextCleanup(_In_ PFLT_CONTEXT Context, _In_ FLT_CONTEXT_TYPE ContextType);
 
 BOOLEAN CheckExtension(_In_ PFILE_OBJECT fileObject);

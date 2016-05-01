@@ -9,33 +9,6 @@ _In_reads_bytes_opt_(SizeOfContext) PVOID ConnectionContext,
 _In_ ULONG SizeOfContext,
 _Outptr_result_maybenull_ PVOID *ConnectionCookie
 )
-/*++
-
-Routine Description
-
-This is called when user-mode connects to the server port - to establish a
-connection
-
-Arguments
-
-ClientPort - This is the client connection port that will be used to
-send messages from the filter
-
-ServerPortCookie - The context associated with this port when the
-minifilter created this port.
-
-ConnectionContext - Context from entity connecting to this port (most likely
-your user mode service)
-
-SizeofContext - Size of ConnectionContext in bytes
-
-ConnectionCookie - Context to be passed to the port disconnect routine.
-
-Return Value
-
-STATUS_SUCCESS - to accept the connection
-
---*/
 {
 	PAGED_CODE();
 
@@ -70,22 +43,6 @@ VOID
 ClientHandlerPortDisconnect(
 _In_opt_ PVOID ConnectionCookie
 )
-/*++
-
-Routine Description
-
-This is called when the connection is torn-down. We use it to close our
-handle to the connection
-
-Arguments
-
-ConnectionCookie - Context from the port connect routine
-
-Return value
-
-None
-
---*/
 {
 	UNREFERENCED_PARAMETER(ConnectionCookie);
 
