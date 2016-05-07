@@ -62,6 +62,7 @@ _In_opt_ PVOID ConnectionCookie
 	//
 
 	userProcess = NULL;
+	targetPid = (DWORD) -1;
 }
 
 
@@ -84,14 +85,14 @@ _Out_ PULONG ReturnOutputBufferLength
 	PT_DBG_PRINT(PTDBG_TRACE_ROUTINES,
 		("FileSystemDriver!ClientHandlerPortMessage: Entered\n"));
 
-	PT_DBG_PRINT(PTDBG_INFORMATION,
-		("Message: %s\n", (char *)InputBuffer));
-	
-	if (OutputBuffer != NULL && OutputBufferLength >= InputBufferLength) {
-		PT_DBG_PRINT(PTDBG_INFORMATION, ("buf: %p len: %d\n", OutputBuffer, OutputBufferLength));
-		memcpy(OutputBuffer, InputBuffer, InputBufferLength);
-		*ReturnOutputBufferLength = InputBufferLength;
-
+	if (InputBuffer != NULL && InputBufferLength >= sizeof(MESSAGE_BODY_STRUCT)) {
+		targetPid = ((MESSAGE_BODY_STRUCT *)InputBuffer)->messageType.processPid.pid;
+		PT_DBG_PRINT(PTDBG_INFORMATION,
+			("FileSystemDriver!ClientHandlerPortMessage: Target PID: %d\n", targetPid));
+		MESSAGE_BODY_STRUCT reply;
+		reply.messageType.driverReply.status = 0;
+		RtlCopyMemory(OutputBuffer, &reply, sizeof(reply));
+		*ReturnOutputBufferLength = sizeof(reply);
 	}
 
 

@@ -117,7 +117,6 @@ int _cdecl main(_In_ int argc, _In_reads_(argc) char *argv[])
 	HANDLE port = NULL;
 	HRESULT hr;
 	DWORD bytes_returned;
-	MESSAGE_STRUCT message;
 
 	//
 	//  Open a commuication channel to the filter
@@ -131,22 +130,22 @@ int _cdecl main(_In_ int argc, _In_reads_(argc) char *argv[])
 		return -4;
 	}
 
+	MESSAGE_STRUCT message;
+	
+	message.body.messageType.processPid.pid = target;
+	FilterSendMessage(port, &message.body, sizeof(message.body), &message.body, sizeof(message.body), &bytes_returned);
+	if (message.body.messageType.driverReply.status != 0) {
+		std::wcout << L"ERROR: Can't set pid" << std::endl;
+	}
+	std::wcout << L"Listening... " << std::endl;
+
 	for (;;) {
 		int status = FilterGetMessage(port, (PFILTER_MESSAGE_HEADER)&message, sizeof(MESSAGE_STRUCT), NULL);
-		std::wcout << L"op: " << int(message.body.ioOpType) << std::endl;
-		std::wcout << L"guid: " << message.body.guid << std::endl;
-		std::wcout << L"path: " << message.body.path << std::endl << std::endl;
+		std::wcout << L"op: " << int(message.body.messageType.operationStatus.ioOpType) << std::endl;
+		std::wcout << L"guid: " << message.body.messageType.operationStatus.guid << std::endl;
+		std::wcout << L"path: " << message.body.messageType.operationStatus.path << std::endl << std::endl;
 	}
 
-	/* example
-	for (;;) {
-		fgets(buf, sizeof(buf), stdin);
-		if (strcmp(buf, "exit\n") == 0)
-			break;
-		FilterSendMessage(port, buf, strlen(buf), out_buf, sizeof(out_buf), &bytes_returned);
-		out_buf[bytes_returned] = 0;
-		printf("%d bytes returned: %s\n", bytes_returned, out_buf);
-	}*/
 
 	CloseHandle(port);
 	return hr;

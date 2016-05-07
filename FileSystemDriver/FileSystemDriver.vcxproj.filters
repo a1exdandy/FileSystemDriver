@@ -36,9 +36,6 @@
     <ClCompile Include="FileSystemDriverCommunications.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FileSystemDriverGlobalsInit.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="FileSystemDriver.rc">

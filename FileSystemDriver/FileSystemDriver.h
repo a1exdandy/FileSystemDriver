@@ -16,6 +16,7 @@ PFLT_FILTER gFilterHandle;
 PFLT_PORT serverPort;
 PEPROCESS userProcess;
 PFLT_PORT clientPort;
+DWORD targetPid;
 
 //tags
 #define CTX_STRING_TAG 'CTXt'
@@ -30,7 +31,11 @@ PFLT_PORT clientPort;
 #define PTDBG_ERROR                     0x00000010
 
 
-extern ULONG gTraceFlags;
+static ULONG gTraceFlags =
+	PTDBG_TRACE_OPERATION_STATUS |
+	PTDBG_INFORMATION |
+	PTDBG_WARNING |
+	PTDBG_ERROR;
 
 
 #define PT_DBG_PRINT( _dbgLevel, _string )          \
@@ -139,9 +144,54 @@ BOOLEAN CheckExtension(_In_ PFILE_OBJECT fileObject);
 #pragma alloc_text(PAGE, CtxContextCleanup)
 #endif
 
-extern CONST FLT_OPERATION_REGISTRATION Callbacks[];
-extern CONST FLT_REGISTRATION FilterRegistration;
-extern const FLT_CONTEXT_REGISTRATION ContextRegistration[];
+static const FLT_CONTEXT_REGISTRATION ContextRegistration[] = {
+
+	{ FLT_INSTANCE_CONTEXT,
+	0,
+	CtxContextCleanup,
+	CTX_INSTANCE_CONTEXT_SIZE,
+	CTX_OBJECT_TAG },
+
+	{ FLT_CONTEXT_END }
+};
+
+static CONST FLT_OPERATION_REGISTRATION Callbacks[] = {
+
+	{ IRP_MJ_CREATE,
+	0,
+	FileSystemDriverPreOperation,
+	FileSystemDriverPostOperation },
+
+	{ IRP_MJ_READ,
+	0,
+	FileSystemDriverPreOperation,
+	FileSystemDriverPostOperation },
+
+	{ IRP_MJ_WRITE,
+	0,
+	FileSystemDriverPreOperation,
+	FileSystemDriverPostOperation },
+
+	{ IRP_MJ_OPERATION_END }
+};
+
+static CONST FLT_REGISTRATION FilterRegistration = {
+
+	sizeof(FLT_REGISTRATION),           //  Size
+	FLT_REGISTRATION_VERSION,           //  Version
+	0,                                  //  Flags
+	ContextRegistration,                //  Context
+	Callbacks,                          //  Operation callbacks
+	FileSystemDriverUnload,             //  MiniFilterUnload
+	FileSystemDriverInstanceSetup,      //  InstanceSetup
+	NULL,								//  InstanceQueryTeardown
+	NULL,                               //  InstanceTeardownStart
+	CtxInstanceTeardownComplete,        //  InstanceTeardownComplete
+	NULL,                               //  GenerateFileName
+	NULL,                               //  GenerateDestinationFileName
+	NULL                                //  NormalizeNameComponent
+
+};
 
 #endif
 
@@ -155,10 +205,20 @@ enum OPERATION_TYPE {
 };
 
 typedef struct _MESSAGE_BODY_STRUCT {
-	UINT8 ioOpType;
-	// + size of prefix "\??\Volume"
-	WCHAR guid[64];
-	WCHAR path[512];
+	union {
+		struct {
+			UINT8 ioOpType;
+			// + size of prefix "\??\Volume"
+			WCHAR guid[64];
+			WCHAR path[512];
+		} operationStatus;
+		struct {
+			DWORD pid;
+		} processPid;
+		struct {
+			DWORD status;
+		} driverReply;
+	} messageType;
 
 } MESSAGE_BODY_STRUCT, *PMESSAGE_BODY_STRUCT;
 
