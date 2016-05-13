@@ -117,18 +117,26 @@ void MessageOutput(_In_ std::wofstream& sFile, _In_ MESSAGE_STRUCT& msg)
 	time(&rawtime);
 	localtime_s(&timestruct, &rawtime);
 
+	WCHAR mountPoint[MAX_PATH];
+	memset(mountPoint, 0, sizeof(WCHAR) * MAX_PATH);
+	DWORD recevied = 0;
+	std::wstring volumePath = L"\\\\" + std::wstring(msg.body.messageType.operationStatus.guid + 2) + L"\\";
+
+	if ((::GetVolumePathNamesForVolumeNameW(volumePath.c_str(), mountPoint, MAX_PATH, &recevied)) && (recevied > 0))
+		volumePath = std::wstring(mountPoint);
+	else if (::GetLastError() != ERROR_MORE_DATA)
+		std::wcout << L"Warning! Can't resolve guid to mount point, guid used as path. Errorcode: " << ::GetLastError() << std::endl;
+
 	if (sFile.is_open())
 	{
 		sFile << timestruct.tm_hour << L":" << timestruct.tm_min << L":" << timestruct.tm_sec << L";";
 		sFile << timestruct.tm_mday << L"." << timestruct.tm_mon + 1 << L"." << timestruct.tm_year + 1900 << L";";
 		sFile << messageType << L";";
-		sFile << msg.body.messageType.operationStatus.guid << L";";
-		sFile << msg.body.messageType.operationStatus.path << L";" << std::endl;
+		sFile << volumePath + std::wstring(msg.body.messageType.operationStatus.path) << L";" << std::endl;
 	}
 
 	std::wcout << L"op: " << messageType << std::endl;
-	std::wcout << L"guid: " << msg.body.messageType.operationStatus.guid << std::endl;
-	std::wcout << L"path: " << msg.body.messageType.operationStatus.path << std::endl << std::endl;
+	std::wcout << L"path: " << volumePath + std::wstring(msg.body.messageType.operationStatus.path) << std::endl << std::endl;
 }
 
 int _cdecl main(_In_ int argc, _In_reads_(argc) char *argv[])
