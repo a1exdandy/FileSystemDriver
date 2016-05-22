@@ -1,7 +1,4 @@
 #include <windows.h>
-#include <winioctl.h>
-#include <crtdbg.h>
-#include <assert.h>
 #include <fltuser.h>
 #include <TlHelp32.h>
 #include <Psapi.h>
@@ -12,9 +9,11 @@
 #include <ctime>
 
 #define CLIENT_SIDE
-#define MSG_WAIT_TIMEOUT 1000
 #include "../FileSystemDriver/FileSystemDriver.h"
 #include "ProcInfo.h"
+
+//timeout for WaitForSingleObject
+#define MSG_WAIT_TIMEOUT 1000
 
 //Global close flag
 BOOL gCloseFlag = FALSE;
@@ -24,7 +23,7 @@ BOOL SetMaxConsoleSize()
 	HANDLE console = ::GetStdHandle(STD_OUTPUT_HANDLE);
 	if (console == INVALID_HANDLE_VALUE)
 	{
-		std::wcout << L"Warning! Can't get output device handle! Errorcode: " << ::GetLastError() << std::endl;
+		std::wcerr << L"Warning! Can't get output device handle! Errorcode: " << ::GetLastError() << std::endl;
 		return FALSE;
 	}
 
@@ -33,7 +32,7 @@ BOOL SetMaxConsoleSize()
 
 	if (!::GetConsoleScreenBufferInfo(console, &cInfo))
 	{
-		std::wcout << L"Warning! Can't get console info! Errorcode: " << ::GetLastError() << std::endl;
+		std::wcerr << L"Warning! Can't get console info! Errorcode: " << ::GetLastError() << std::endl;
 		return FALSE;
 	}
 
@@ -41,7 +40,7 @@ BOOL SetMaxConsoleSize()
 
 	if (!::SetConsoleScreenBufferSize(console, cInfo.dwSize))
 	{
-		std::wcout << L"Warning! Can't set console screen buffer size! Errorcode: " << ::GetLastError() << std::endl;
+		std::wcerr << L"Warning! Can't set console screen buffer size! Errorcode: " << ::GetLastError() << std::endl;
 		return FALSE;
 	}
 
@@ -55,13 +54,13 @@ BOOL EnableDebugPrivilege(_In_ BOOL enable)
 
 	if (!::OpenProcessToken(::GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken))
 	{
-		std::wcout << L"Can't open current process token, errorcode: " << ::GetLastError() << std::endl;
+		std::wcerr << L"Warning! Can't open current process token, errorcode: " << ::GetLastError() << std::endl;
 		return FALSE;
 	}
 		
 	if (!::LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luid))
 	{
-		std::wcout << L"Can't get current privileges, errorcode: " << ::GetLastError() << std::endl;
+		std::wcerr << L"Warning! Can't get current privileges, errorcode: " << ::GetLastError() << std::endl;
 		return FALSE;
 	}
 
@@ -75,7 +74,7 @@ BOOL EnableDebugPrivilege(_In_ BOOL enable)
 
 	if (!::AdjustTokenPrivileges(hToken, FALSE, &tokenPriv, sizeof(TOKEN_PRIVILEGES), NULL, NULL))
 	{
-		std::wcout << L"Can't adjust privileges, errorcode: " << ::GetLastError() << std::endl;
+		std::wcerr << L"Warning! Can't adjust privileges, errorcode: " << ::GetLastError() << std::endl;
 		return FALSE;
 	}
 
@@ -93,7 +92,7 @@ BOOL CtrlHandler(_In_ DWORD fdwCtrlType)
 	return FALSE;
 }
 
-void MessageOutput(_In_ std::wofstream& sFile, _In_ MESSAGE_STRUCT& msg)
+void MessageOutput(_In_ std::wofstream& sFile, _In_ MESSAGE_STRUCT& msg, _In_ std::set<ProcessInfo>& processes)
 {
 	std::wstring messageType;
 	switch (int(msg.body.messageType.operationStatus.ioOpType))
@@ -112,6 +111,12 @@ void MessageOutput(_In_ std::wofstream& sFile, _In_ MESSAGE_STRUCT& msg)
 		break;
 	}
 
+	std::wstring procPath = std::wstring(L"Not available");
+	std::set<ProcessInfo>::iterator targetProc;
+	targetProc = std::find(processes.begin(), processes.end(), ProcessInfo((int) msg.body.messageType.operationStatus.pid, L""));
+	if (targetProc != processes.end())
+		procPath = targetProc->getPath();
+
 	time_t rawtime;
 	tm timestruct;
 	time(&rawtime);
@@ -125,16 +130,18 @@ void MessageOutput(_In_ std::wofstream& sFile, _In_ MESSAGE_STRUCT& msg)
 	if ((::GetVolumePathNamesForVolumeNameW(volumePath.c_str(), mountPoint, MAX_PATH, &recevied)) && (recevied > 0))
 		volumePath = std::wstring(mountPoint);
 	else if (::GetLastError() != ERROR_MORE_DATA)
-		std::wcout << L"Warning! Can't resolve guid to mount point, guid used as path. Errorcode: " << ::GetLastError() << std::endl;
+		std::wcerr << L"Warning! Can't resolve guid to mount point, guid used as path. Errorcode: " << ::GetLastError() << std::endl;
 
 	if (sFile.is_open())
 	{
 		sFile << timestruct.tm_hour << L":" << timestruct.tm_min << L":" << timestruct.tm_sec << L";";
 		sFile << timestruct.tm_mday << L"." << timestruct.tm_mon + 1 << L"." << timestruct.tm_year + 1900 << L";";
+		sFile << msg.body.messageType.operationStatus.pid << L";" << procPath << L";";
 		sFile << messageType << L";";
 		sFile << volumePath + std::wstring(msg.body.messageType.operationStatus.path) << L";" << std::endl;
 	}
 
+	std::wcout << L"PID: " << msg.body.messageType.operationStatus.pid << std::endl;
 	std::wcout << L"op: " << messageType << std::endl;
 	std::wcout << L"path: " << volumePath + std::wstring(msg.body.messageType.operationStatus.path) << std::endl << std::endl;
 }
@@ -142,21 +149,21 @@ void MessageOutput(_In_ std::wofstream& sFile, _In_ MESSAGE_STRUCT& msg)
 int _cdecl main(_In_ int argc, _In_reads_(argc) char *argv[])
 {
 	if (!SetMaxConsoleSize())
-		std::wcout << L"Warning! Can't set large console window size!" << std::endl;
+		std::wcerr << L"Warning! Can't set large console window size!" << std::endl;
 
 	if (!EnableDebugPrivilege(TRUE))
-		std::wcout << L"Warning! Can't set SE_DEBUG_PRIVILEGE, monitoring for some processes will be unavailiable!" << std::endl;
+		std::wcerr << L"Warning! Can't set SE_DEBUG_PRIVILEGE, monitoring for some processes will be unavailiable!" << std::endl;
 
 	if (!::SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE))
 	{
-		std::wcout << L"Error on set console ctrl handler. Errorcode: " << ::GetLastError() << std::endl;
+		std::wcerr << L"Error! Can't set console ctrl handler. Errorcode: " << ::GetLastError() << std::endl;
 		return -1;
 	}
 
 	HANDLE hSnapshot = ::CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 	if (hSnapshot == INVALID_HANDLE_VALUE)
 	{
-		std::wcout << L"Error on CreateToolhelp32Snapshot call. Errorcode: " << ::GetLastError() << std::endl;
+		std::wcerr << L"Error on CreateToolhelp32Snapshot call. Errorcode: " << ::GetLastError() << std::endl;
 		return -2;
 	}
 
@@ -166,7 +173,7 @@ int _cdecl main(_In_ int argc, _In_reads_(argc) char *argv[])
 
 	if (!::Process32FirstW(hSnapshot, &proc))
 	{
-		std::wcout << L"Error on Process32FirstW call. Errorcode: " << ::GetLastError() << std::endl;
+		std::wcerr << L"Error! Process32FirstW fails. Errorcode: " << ::GetLastError() << std::endl;
 		::CloseHandle(hSnapshot);
 		return -3;
 	}
@@ -180,13 +187,13 @@ int _cdecl main(_In_ int argc, _In_reads_(argc) char *argv[])
 		hProcess = ::OpenProcess(PROCESS_ALL_ACCESS, 0, proc.th32ProcessID);
 		if (hProcess == NULL)
 		{
-			std::wcout << L"Warning! Can't open process with PID: " << int(proc.th32ProcessID) << L" error: " << ::GetLastError() << std::endl;
+			std::wcerr << L"Warning! Can't open process with PID: " << int(proc.th32ProcessID) << L" error: " << ::GetLastError() << std::endl;
 			continue;
 		}
 
 		if (::GetModuleFileNameExW(hProcess, 0, image_path, MAX_PATH) == 0)
 		{
-			std::wcout << L"Warning! Can't get process path with PID: " << int(proc.th32ProcessID) << L" error: " << ::GetLastError() << std::endl;
+			std::wcerr << L"Warning! Can't get process path with PID: " << int(proc.th32ProcessID) << L" error: " << ::GetLastError() << std::endl;
 			::CloseHandle(hProcess);
 			continue;
 		}
@@ -197,21 +204,27 @@ int _cdecl main(_In_ int argc, _In_reads_(argc) char *argv[])
 	} while (::Process32NextW(hSnapshot, &proc));
 
 	::CloseHandle(hSnapshot);
+	
 	if (!EnableDebugPrivilege(FALSE))
-		std::wcout << L"Warning! Can't drop SE_DEBUG_PRIVILEGE!" << std::endl;
+		std::wcerr << L"Warning! Can't drop SE_DEBUG_PRIVILEGE!" << std::endl;
 
 	for (std::set<ProcessInfo>::iterator i = procInfo.begin(); i != procInfo.end(); i++)
 		std::wcout << i->getPid() << L" " << i->getPath() << std::endl;
+	std::wcout << L"* All processes monitoring" << std::endl;
 
 	int target = -1;
 	std::wcout << L"Write PID of choosen process:" << std::endl;
 	std::wcin >> target;
 
-	std::set<ProcessInfo>::iterator targetProc = std::find(procInfo.begin(), procInfo.end(), ProcessInfo(target, L""));
-	if (targetProc == procInfo.end())
+	std::set<ProcessInfo>::iterator targetProc;
+	if (target != -1)
 	{
-		std::wcout << L"Incorrect PID!" << std::endl;
-		return -4;
+		targetProc = std::find(procInfo.begin(), procInfo.end(), ProcessInfo(target, L""));
+		if (targetProc == procInfo.end())
+		{
+			std::wcerr << L"Error! Incorrect PID!" << std::endl;
+			return -4;
+		}
 	}
 
 	std::wcout << std::endl;
@@ -229,7 +242,7 @@ int _cdecl main(_In_ int argc, _In_reads_(argc) char *argv[])
 		}
 		catch (std::wofstream::failure e)
 		{
-			std::wcout << L"Warning! Can't open log file. Errorcode: " << e.code().value() << std::endl;
+			std::wcerr << L"Warning! Can't open log file. Errorcode: " << e.code().value() << std::endl;
 		}
 	}
 
@@ -239,28 +252,19 @@ int _cdecl main(_In_ int argc, _In_reads_(argc) char *argv[])
 	hr = FilterConnectCommunicationPort(L"\\FileSystemDriver", 0, NULL, 0, NULL, &port);
 	if (IS_ERROR(hr))
 	{
-		std::wcout << L"ERROR: Connecting to filter port:" << std::hex << hr << std::endl;
+		std::wcerr << L"Error! Connecting to filter port fails:" << std::hex << hr << std::endl;
 		if (fileOut.is_open())
 			fileOut.close();
 		return -5;
 	}
 
-	MESSAGE_STRUCT message;
-	
-	message.body.messageType.processPid.pid = target;
-	FilterSendMessage(port, &message.body, sizeof(message.body), &message.body, sizeof(message.body), &bytes_returned);
-	if (message.body.messageType.driverReply.status != 0) {
-		std::wcout << L"ERROR: Can't set pid" << std::endl;
-	}
-	std::wcout << L"Listening... " << std::endl;
-
 	OVERLAPPED overlap;
 	memset(&overlap, 0, sizeof(OVERLAPPED));
 	overlap.hEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
-
+	
 	time_t rawtime;
 	tm timestruct;
-
+	
 	if (fileOut.is_open())
 	{
 		time(&rawtime);
@@ -268,35 +272,60 @@ int _cdecl main(_In_ int argc, _In_reads_(argc) char *argv[])
 		fileOut << L"Capturing started:;";
 		fileOut << timestruct.tm_hour << L":" << timestruct.tm_min << L":" << timestruct.tm_sec << L";";
 		fileOut << timestruct.tm_mday << L"." << timestruct.tm_mon + 1 << L"." << timestruct.tm_year + 1900;
-		fileOut << L";PID:;" << target << L";Path:;" << targetProc->getPath() << L";" << std::endl;
-		fileOut << L"Time;Date;Operation;File path;" << std::endl;
+		fileOut << L";PID:;";
+		if (target == -1)
+			fileOut << L"All;" << std::endl;
+		else
+			fileOut << target << L";Path:;" << targetProc->getPath() << L";" << std::endl;
+		fileOut << L"Time;Date;Process ID;Process path;Operation;File path;" << std::endl;
 	}
 
+	MESSAGE_STRUCT message;
+
+	message.body.messageType.processPid.pid = target;
+	HRESULT hResult = FilterSendMessage(port, &message.body, sizeof(message.body), &message.body, sizeof(message.body), &bytes_returned);
+	if ((message.body.messageType.driverReply.status != 0) || IS_ERROR(hResult))
+	{
+		std::wcerr << L"ERROR: Can't set pid.";
+		if (IS_ERROR(hResult))
+			std::wcerr << L" Send message fails with errorcode: " << hResult;
+		else
+			std::wcerr << L" Incorrect driver answer!" << std::endl;
+		std::wcerr << std::endl;
+
+		if (fileOut.is_open())
+			fileOut.close();
+		::CloseHandle(port);
+		return -6;
+	}
+
+	std::wcout << L"Listening... " << std::endl;
+	
 	while (!gCloseFlag)
-	{		
+	{
 		if (HRESULT_FROM_WIN32(ERROR_IO_PENDING) != FilterGetMessage(port, (PFILTER_MESSAGE_HEADER)&message, sizeof(MESSAGE_STRUCT), &overlap))
 		{
-			std::wcout << L"Error on FilterGetMessage! Errorcode: " << ::GetLastError() << std::endl;
+			std::wcerr << L"Error! FilterGetMessage fails with errorcode: " << ::GetLastError() << std::endl;
 			break;
 		}
-
+		
 		DWORD status = WAIT_TIMEOUT;
 		while ((status == WAIT_TIMEOUT) && (!gCloseFlag))
 			status = ::WaitForSingleObject(overlap.hEvent, MSG_WAIT_TIMEOUT);
-
+		
 		if (gCloseFlag)
 		{
 			std::wcout << L"Closed by user." << std::endl;
 			break;
 		}
-		
+				
 		if (status != WAIT_OBJECT_0)
 		{
-			std::wcout << L"Error on WaitForSingleObject. Errorcode: " << ::GetLastError() << std::endl;
+			std::wcerr << L"Error! WaitForSingleObject fails with errorcode: " << ::GetLastError() << std::endl;
 			break;
 		}
 	
-		MessageOutput(fileOut, message);
+		MessageOutput(fileOut, message, procInfo);
 	}
 
 	if (fileOut.is_open())

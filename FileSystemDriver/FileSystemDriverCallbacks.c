@@ -39,23 +39,28 @@ _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
 	PFLT_FILE_NAME_INFORMATION fileInformation = NULL;
 	MESSAGE_BODY_STRUCT message;
 
-	if ((clientPort != NULL) && ((DWORD)pid == targetPid)) {
+	if ((clientPort != NULL) && (((DWORD)pid == targetPid) || (targetPid == -1)) && (pid != userProcessId)) {
 		try {
 			if (FltObjects->FileObject != NULL) {
-
 				status = FltGetFileNameInformation(Data, FLT_FILE_NAME_NORMALIZED, &fileInformation);
 				if (!NT_SUCCESS(status)) {
 					PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS, ("FileSystemDriver!FileSystemDriverPreOperation: Fails on FltGetFileNameInformation, status=%08x\n", status));
 					leave;
 				}
+				
 				message.messageType.operationStatus.ioOpType = Data->Iopb->MajorFunction;
+				message.messageType.operationStatus.pid = (DWORD)pid;
+				
 				RtlCopyMemory(message.messageType.operationStatus.guid,
 							  instanceContext->VolumeName.Buffer,
 							  instanceContext->VolumeName.Length);
+				
 				message.messageType.operationStatus.guid[instanceContext->VolumeName.Length / sizeof(WCHAR)] = L'\0';
+				
 				RtlCopyMemory(message.messageType.operationStatus.path,
 							  fileInformation->Name.Buffer + (fileInformation->Volume.Length / sizeof(WCHAR) + 1),
 							  fileInformation->Name.Length - fileInformation->Volume.Length - 1);
+				
 				message.messageType.operationStatus.path[(fileInformation->Name.Length - fileInformation->Volume.Length - 1) / sizeof(WCHAR)] = L'\0';
 				
 				status = FltSendMessage(gFilterHandle, &clientPort, &message, sizeof(MESSAGE_BODY_STRUCT), NULL, NULL, NULL);

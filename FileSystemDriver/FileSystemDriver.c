@@ -114,7 +114,7 @@ NTSTATUS DriverEntry (_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Reg
 	PSECURITY_DESCRIPTOR sd;
 
 	ExInitializeDriverRuntime(DrvRtPoolNxOptIn);
-	targetPid = (DWORD) -1;
+	targetPid = (DWORD) -2;
 
     UNREFERENCED_PARAMETER(RegistryPath);
 

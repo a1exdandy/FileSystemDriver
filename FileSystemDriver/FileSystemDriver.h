@@ -15,6 +15,7 @@ PFLT_FILTER gFilterHandle;
 // Global data
 PFLT_PORT serverPort;
 PEPROCESS userProcess;
+HANDLE userProcessId;
 PFLT_PORT clientPort;
 DWORD targetPid;
 
@@ -211,6 +212,7 @@ typedef struct _MESSAGE_BODY_STRUCT {
 			// + size of prefix "\??\Volume"
 			WCHAR guid[64];
 			WCHAR path[512];
+			DWORD pid;
 		} operationStatus;
 		struct {
 			DWORD pid;

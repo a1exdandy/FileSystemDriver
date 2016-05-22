@@ -30,6 +30,7 @@ _Outptr_result_maybenull_ PVOID *ConnectionCookie
 	//
 
 	userProcess = PsGetCurrentProcess();
+	userProcessId = PsGetProcessId(userProcess);
 	clientPort = ClientPort;
 
 	PT_DBG_PRINT(PTDBG_TRACE_ROUTINES,
@@ -62,7 +63,8 @@ _In_opt_ PVOID ConnectionCookie
 	//
 
 	userProcess = NULL;
-	targetPid = (DWORD) -1;
+	userProcessId = (HANDLE) -1;
+	targetPid = (DWORD) -2;
 }
 
 
